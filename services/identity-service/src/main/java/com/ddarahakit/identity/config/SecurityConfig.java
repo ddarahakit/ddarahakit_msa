@@ -22,11 +22,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 import static org.springframework.http.HttpMethod.*;
 
@@ -34,11 +29,8 @@ import static org.springframework.http.HttpMethod.*;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-    @Value("${app.domain.server}")
-    private String domain;
-    // CORS 허용 오리진(쉼표 구분). 미설정 시 app.domain.server 단일 값으로 폴백(dev 호환).
-    @Value("${app.domain.allowed-origins:${app.domain.server}}")
-    private String allowedOrigins;
+    // CORS 는 게이트웨이에서 일원화 처리한다(서비스별 CORS 제거). identity 는 게이트웨이를 통해서만
+    // 외부에 노출되므로 자체 CORS 를 두면 ACAO 중복/Origin 불일치로 충돌한다.
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final OAuth2UserService oAuth2UserService;
@@ -60,19 +52,6 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowCredentials(true);
-        configuration.setAllowedOrigins(List.of(allowedOrigins.split("\\s*,\\s*")));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); // 모든 경로에 대해 CORS 적용
-        return source;
-    }
-
-    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
         http.httpBasic(AbstractHttpConfigurer::disable);
@@ -81,9 +60,8 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         );
 
-        http.cors(cors ->
-                cors.configurationSource(corsConfigurationSource()));
-
+        // CORS 비활성: 게이트웨이가 단일 CORS 주체. (다운스트림에서 ACAO 를 추가하면 중복되어 브라우저가 거부)
+        http.cors(AbstractHttpConfigurer::disable);
 
         http.oauth2Login((config) -> {
             config.authorizationEndpoint(authorization -> authorization
