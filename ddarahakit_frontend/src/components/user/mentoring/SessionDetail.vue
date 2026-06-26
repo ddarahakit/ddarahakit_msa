@@ -316,19 +316,23 @@ const sendChat = async () => {
 
 const startResize = () => {
   isResizing.value = true
+  // 드래그 중 전역 텍스트 선택 방지(마우스가 영역 밖으로 나가도 유지)
+  document.body.style.userSelect = 'none'
 }
 
 const onResize = (event) => {
   if (!isResizing.value || !screenSectionRef.value) return
   const top = screenSectionRef.value.getBoundingClientRect().top
   const next = event.clientY - top
-  if (next >= 150 && next <= window.innerHeight * 0.7) {
-    screenHeight.value = next
-  }
+  const min = 160
+  const max = window.innerHeight * 0.75
+  screenHeight.value = Math.min(max, Math.max(min, next))
 }
 
 const stopResize = () => {
+  if (!isResizing.value) return
   isResizing.value = false
+  document.body.style.userSelect = ''
 }
 
 onMounted(async () => {
@@ -364,7 +368,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex-1 flex flex-col min-h-0">
+  <div class="flex-1 flex flex-col min-h-0" :class="{ 'select-none': isResizing }">
     <div
       id="screen-section"
       ref="screenSectionRef"
@@ -404,7 +408,9 @@ onUnmounted(() => {
           </button>
         </div>
       </div>
-      <div id="resize-handle" @mousedown="startResize"></div>
+      <div id="resize-handle" @mousedown.prevent="startResize" title="드래그하여 화면 크기 조절">
+        <span class="resize-grip"></span>
+      </div>
     </div>
 
     <div id="chat-header" class="bg-white border-b border-slate-200 p-4 flex items-center justify-between gap-3">
@@ -577,15 +583,32 @@ onUnmounted(() => {
 }
 
 #resize-handle {
-  height: 6px;
-  background: #334155;
+  height: 12px;
+  background: #1e293b;
   cursor: ns-resize;
   width: 100%;
   z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
 }
 
 #resize-handle:hover {
   background: #14bced;
+}
+
+.resize-grip {
+  width: 44px;
+  height: 4px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  transition: background 0.15s ease;
+}
+
+#resize-handle:hover .resize-grip {
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .pulse-icon {

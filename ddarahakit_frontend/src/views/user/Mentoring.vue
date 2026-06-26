@@ -15,6 +15,14 @@ const authStore = useAuthStore()
 const myIdx = authStore.getUserIdx()
 const partyOf = (session) => getCounterpart(session, myIdx)
 
+// 세션 목록 사이드바 열림/닫힘 (강의 수강 페이지처럼 토글, localStorage 유지)
+const SIDEBAR_KEY = 'mentoringSidebarOpen'
+const sidebarOpen = ref(localStorage.getItem(SIDEBAR_KEY) !== 'false')
+const toggleSidebar = () => {
+  sidebarOpen.value = !sidebarOpen.value
+  localStorage.setItem(SIDEBAR_KEY, String(sidebarOpen.value))
+}
+
 const mentoringList = reactive([])
 const scheduleDetail = ref(null)
 
@@ -118,13 +126,27 @@ watch(
 <template>
   <div class="h-[calc(100vh-80px)] flex overflow-hidden pt-20">
 
-    <main v-if="isHistoryPage" class="flex-1 flex overflow-hidden">
-      <SessionList
-        :sessions="mentoringList"
-        :selected-session-id="selectedSessionId"
-        @select="selectHistorySession" />
+    <main v-if="isHistoryPage" class="flex-1 flex overflow-hidden relative">
+      <!-- 접을 수 있는 세션 목록 사이드바 -->
+      <div class="mentoring-sidebar shrink-0" :class="{ closed: !sidebarOpen }">
+        <SessionList
+          :sessions="mentoringList"
+          :selected-session-id="selectedSessionId"
+          @select="selectHistorySession"
+          @toggle="toggleSidebar" />
+      </div>
 
-      <section class="flex-1 flex flex-col bg-slate-50 overflow-hidden">
+      <!-- 닫혔을 때 다시 여는 탭 -->
+      <button
+        v-show="!sidebarOpen"
+        type="button"
+        @click="toggleSidebar"
+        title="세션 목록 열기"
+        class="absolute left-0 top-1/2 -translate-y-1/2 z-30 w-6 h-16 bg-white border border-l-0 border-slate-200 rounded-r-xl shadow-md flex items-center justify-center text-slate-400 hover:text-brand transition-colors">
+        <i class="fa-solid fa-angles-right text-xs"></i>
+      </button>
+
+      <section class="flex-1 flex flex-col bg-slate-50 overflow-hidden min-w-0">
         <SessionDetail
           v-if="selectedSessionId"
           :key="String(selectedSessionId)"
@@ -226,5 +248,16 @@ watch(
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #e2e8f0;
   border-radius: 10px;
+}
+
+/* 세션 목록 사이드바: 접으면 좌측으로 슬라이드되어 숨고 대화 영역이 넓어진다 */
+.mentoring-sidebar {
+  width: 20rem;
+  height: 100%;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mentoring-sidebar.closed {
+  margin-left: -20rem;
 }
 </style>

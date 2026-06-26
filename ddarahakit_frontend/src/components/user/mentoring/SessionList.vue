@@ -15,7 +15,7 @@ const props = defineProps({
     }
 })
 
-const emits = defineEmits(['select'])
+const emits = defineEmits(['select', 'toggle'])
 const keyword = ref('')
 
 const authStore = useAuthStore()
@@ -70,7 +70,7 @@ const onSelect = (item) => {
 </script>
 
 <template>
-    <section class="w-full lg:w-80 bg-white border-r border-slate-200 flex flex-col shrink-0">
+    <section class="w-full lg:w-80 h-full bg-white border-r border-slate-200 flex flex-col shrink-0">
         <!-- 헤더 -->
         <div class="p-5 border-b border-slate-100">
             <div class="flex items-center justify-between mb-4">
@@ -80,7 +80,13 @@ const onSelect = (item) => {
                         진행 {{ openCount }}
                     </span>
                 </div>
-                <span class="text-[11px] text-slate-400">전체 {{ viewSessions.length }}</span>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-[11px] text-slate-400">전체 {{ viewSessions.length }}</span>
+                    <button type="button" @click="emits('toggle')" title="목록 접기"
+                        class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-brand hover:bg-slate-100 rounded-lg transition-colors">
+                        <i class="fa-solid fa-angles-left text-sm"></i>
+                    </button>
+                </div>
             </div>
             <div class="relative">
                 <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
