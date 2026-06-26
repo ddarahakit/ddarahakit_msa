@@ -32,7 +32,9 @@ const screenSectionRef = ref(null)
 
 const hasRemoteStream = ref(false)
 const isScreenSharing = ref(false)
-const screenHeight = ref(300)
+// 공유화면(위) vs 채팅(아래) 분할 높이. 마지막 비율을 localStorage 에 유지.
+const SCREEN_H_KEY = 'mentoringScreenHeight'
+const screenHeight = ref(Number(localStorage.getItem(SCREEN_H_KEY)) || 320)
 const isResizing = ref(false)
 
 let peerConnection = null
@@ -333,6 +335,7 @@ const stopResize = () => {
   if (!isResizing.value) return
   isResizing.value = false
   document.body.style.userSelect = ''
+  localStorage.setItem(SCREEN_H_KEY, String(Math.round(screenHeight.value)))
 }
 
 onMounted(async () => {
@@ -372,7 +375,7 @@ onUnmounted(() => {
     <div
       id="screen-section"
       ref="screenSectionRef"
-      :class="{ active: screenVisible }"
+      :class="{ active: screenVisible, resizing: isResizing }"
       :style="{ height: `${screenHeight}px` }">
       <div id="remote-video-container">
         <div v-if="!hasRemoteStream" id="remote-placeholder">
@@ -524,6 +527,11 @@ onUnmounted(() => {
   width: 100%;
   overflow: hidden;
   transition: height 0.3s ease;
+}
+
+/* 드래그 중에는 전환 효과를 끄고 커서를 즉시 따라가게 한다 */
+#screen-section.resizing {
+  transition: none;
 }
 
 #screen-section.active {
