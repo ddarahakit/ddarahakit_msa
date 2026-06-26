@@ -105,6 +105,9 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/error").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
 
+                        // 서비스 간 내부 호출(내부망 전용, 게이트웨이 라우트에 미노출). 외부 비노출이라 permitAll.
+                        .requestMatchers("/internal/**").permitAll()
+
                         // === 인증 필요 엔드포인트 (구체 규칙이 먼저 매칭되도록 아래 공개 규칙보다 위에 둔다) ===
                         .requestMatchers(POST, "/user/logout/all").authenticated()
                         .requestMatchers(PUT, "/user/password/update").authenticated()

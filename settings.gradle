@@ -11,7 +11,7 @@ include 'infra:gateway'
 include 'services:identity-service'
 // include 'services:course-service'
 // include 'services:commerce-service'
-// include 'services:community-service'
+include 'services:community-service'
 // include 'services:review-service'
 
 // 기존 모놀리스(ddarahakit_backend)는 독립 Gradle 프로젝트로 두고,

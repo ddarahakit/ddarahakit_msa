@@ -135,6 +135,26 @@ services:
       eureka: { condition: service_healthy }
     networks: [msa-net]
 
+  # ---------- community-service (2단계 추출) ----------
+  community-service:
+    build:
+      context: .
+      dockerfile: services/community-service/Dockerfile
+    image: ddarahakit/msa-community:dev
+    container_name: msa-community
+    environment:
+      DB_URL: "jdbc:mariadb://mariadb:3306/community_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      UPLOAD_PATH: "/app/uploads"
+    volumes:
+      - msa_uploads:/app/uploads
+    depends_on:
+      mariadb: { condition: service_healthy }
+      eureka: { condition: service_healthy }
+    networks: [msa-net]
+
   # ---------- 모놀리스 (0단계 Strangler 대상) ----------
   monolith:
     build:

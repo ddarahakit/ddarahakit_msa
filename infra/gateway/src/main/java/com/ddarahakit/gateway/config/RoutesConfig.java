@@ -27,6 +27,9 @@ public class RoutesConfig {
                                 "/oauth2/**", "/login/oauth2/**")
                         .uri("lb://identity-service"))
 
+                // ── 2단계: community-service ──
+                .route("community", r -> r.path("/community/**").uri("lb://community-service"))
+
                 // 나머지 전부 모놀리스로 (Strangler 잔여)
                 .route("monolith", r -> r.path("/**").uri(monolithUri))
                 .build();
