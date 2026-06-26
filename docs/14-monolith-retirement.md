@@ -37,9 +37,11 @@ monolith   ← (캐치올, 트래픽 0 — 은퇴)
 
 → **모든 `/user/*` 경로가 identity(인증) 또는 소유 서비스(집계)로 라우팅** → 모놀리스 캐치올로 가는 트래픽 0.
 
-## 모놀리스 상태
-- 현재 모놀리스 컨테이너는 **미라우팅 요청 안전망**으로만 잔존(실 트래픽 없음).
-- 완전 제거: `docker-compose.msa.yml` 에서 `monolith` 서비스 + 게이트웨이 캐치올 라우트 삭제 → 컨테이너 9개(인프라4 + 게이트웨이 + 5서비스)로 슬림화 가능.
+## 모놀리스 완전 제거 (완료)
+- `docker-compose.msa.yml` 에서 `monolith` 서비스 삭제, 게이트웨이 캐치올 라우트(`RoutesConfig`)·`MONOLITH_URI` env 제거.
+- 모놀리스를 URL Feign 으로 호출하던 곳(commerce 가격검증·review 코스존재)의 `MONOLITH_URL` 을 `http://course-service:8080` 으로 전환(course-service 가 `/course/{id}` 제공) → 코드 변경 없이 재배선.
+- 결과: **컨테이너 9개**(mariadb·kafka·eureka·gateway + 5서비스). `msa-monolith` 제거.
+- 제거 후 검증: 전 도메인·집계 6종 200, **commerce 주문생성**(course Feign 가격검증)·**review 작성**(course Feign 존재확인) 200 — 모놀리스 없이 완전 동작.
 
 ## 최종 결과
 모놀리식 Spring Boot → **이벤트 기반 마이크로서비스 5종**(identity·community·commerce·review·course) + 게이트웨이 + Eureka + Kafka 로 **Strangler Fig 무중단 전환 완료**. 동기(Feign)·비동기(아웃박스→Kafka→멱등 소비자 투영)·DB-per-service·헤더 인증·스냅샷 비정규화·읽기모델(enrollment/rating) 등 정석 패턴을 **실데이터 E2E 로 검증**하고, 마지막으로 모놀리스를 은퇴시켜 전환을 마무리했다.

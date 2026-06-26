@@ -1,6 +1,5 @@
 package com.ddarahakit.gateway.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
@@ -14,8 +13,7 @@ import org.springframework.context.annotation.Configuration;
 public class RoutesConfig {
 
     @Bean
-    public RouteLocator routeLocator(RouteLocatorBuilder builder,
-                                     @Value("${monolith.uri}") String monolithUri) {
+    public RouteLocator routeLocator(RouteLocatorBuilder builder) {
         return builder.routes()
                 // ── 1단계: identity-service (인증/프로필) ──
                 .route("identity", r -> r.path(
@@ -46,9 +44,7 @@ public class RoutesConfig {
                                 "/user/ordered", "/user/study/**")
                         .uri("lb://course-service"))
 
-                // 마이페이지 집계까지 전부 서비스로 이전 → 모놀리스로 가는 트래픽 없음(은퇴 대상).
-                // 미라우팅 요청 안전망으로만 잔존.
-                .route("monolith", r -> r.path("/**").uri(monolithUri))
+                // 모놀리스 은퇴 완료 — 캐치올 제거. 미라우팅 경로는 404.
                 .build();
     }
 }
