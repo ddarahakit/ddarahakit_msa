@@ -16,6 +16,19 @@ public interface LectureCompleteRepository extends JpaRepository<LectureComplete
 
     List<LectureComplete> findByUserIdxAndCourseIdx(Long userIdx, Long courseIdx);
 
+    /**
+     * 내 강의실(여러 코스 진도 일괄 조회): 사용자의 수강완료를 course/lecture 와 함께 한 번에 로딩.
+     * course/lecture 를 fetch join 해 그룹핑 시 N+1 을 제거한다.
+     */
+    @Query("""
+            SELECT lc FROM LectureComplete lc
+            JOIN FETCH lc.course c
+            JOIN FETCH lc.lecture l
+            WHERE lc.userIdx = :userIdx AND c.idx IN :courseIdxList
+            """)
+    List<LectureComplete> findByUserIdxAndCourseIdxIn(@Param("userIdx") Long userIdx,
+                                                      @Param("courseIdxList") List<Long> courseIdxList);
+
     /** 사용자의 총 수강완료 강의 수. */
     long countByUserIdx(Long userIdx);
 

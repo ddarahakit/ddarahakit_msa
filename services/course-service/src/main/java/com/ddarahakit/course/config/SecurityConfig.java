@@ -38,6 +38,10 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
 
                         // === 인증 필요(수강완료 기록 / 강의 생성 / 로드맵 변경) — 공개 GET 보다 먼저 선언 ===
+                        // 마이페이지(내 강의실/주간 학습) — 인증 필요
+                        .requestMatchers(GET, "/user/ordered").authenticated()
+                        .requestMatchers(GET, "/user/study/weekly").authenticated()
+
                         .requestMatchers(POST, "/course/lecture/complete").authenticated()
                         .requestMatchers(POST, "/lecture/create").authenticated()
                         .requestMatchers(POST, "/roadmap/**").authenticated()

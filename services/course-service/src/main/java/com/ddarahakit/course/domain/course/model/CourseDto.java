@@ -184,6 +184,17 @@ public class CourseDto {
                     .build();
         }
 
+        /**
+         * 내 강의실(수강 코스 목록) 전용. 진도(완료 강의)·다음 강의(이어듣기) idx 를 포함한다.
+         * 모놀리스 CourseDto.CourseRes.of(course, nextLectureIdx, lectureCompletes) 와 동일한 의미.
+         */
+        public static CourseRes of(Course entity, Long nextLectureIdx, List<Long> lectureCompletes) {
+            return buildCommon(entity, 0)
+                    .sections(mapSections(entity, lectureCompletes))
+                    .nextLectureIdx(nextLectureIdx)
+                    .build();
+        }
+
         public static CourseRes of(Course entity,
                                    int totalOrderedCount,
                                    ReviewDto.ReviewPageRes reviewPage,

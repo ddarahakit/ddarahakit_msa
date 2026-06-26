@@ -59,6 +59,32 @@ public class ReviewDto {
         }
     }
 
+    /**
+     * 내 리뷰(마이페이지) 응답. 코스명은 review 가 소유하지 않으므로 course-service Feign 으로 주입한다(실패 시 null).
+     * 모놀리스 ReviewDto.MyReviewRes(courseIdx/name + 중첩 review) 구조를 따른다.
+     */
+    @Getter
+    @Builder
+    public static class MyReviewRes {
+        private Long courseIdx;
+        private String courseName;
+        private Integer rating;
+        private String comment;
+        private String createdAt;   // 작성일 (yyyy.MM.dd)
+
+        public static MyReviewRes of(Review entity, String courseName) {
+            return MyReviewRes.builder()
+                    .courseIdx(entity.getCourseIdx())
+                    .courseName(courseName)
+                    .rating(entity.getRating())
+                    .comment(entity.getComment())
+                    .createdAt(entity.getCreatedAt() != null
+                            ? new SimpleDateFormat("yyyy.MM.dd").format(entity.getCreatedAt())
+                            : null)
+                    .build();
+        }
+    }
+
     @Getter
     @Builder
     public static class ReviewPageRes {

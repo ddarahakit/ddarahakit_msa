@@ -237,6 +237,76 @@ public class CourseService {
         return LectureDto.LectureCompleteRes.of(lectureComplete.getLecture());
     }
 
+    /**
+     * 내 강의실: 현재 사용자의 수강 코스 목록(+진도/다음강의).
+     * 모놀리스 UserService.getOrderedCourseList 이식 — ordersItem 대신 enrollment(수강권) 를 출처로 사용.
+     * 코스별 (완료 강의 목록 / 전체 강의)을 각 1회 일괄 조회해 N+1 을 제거한다.
+     */
+    public List<CourseDto.CourseRes> getOrderedCourseList(AuthUserDetails authUserDetails) {
+        Long userIdx = authUserDetails.getIdx();
+
+        // 수강권(enrollment) → 구매 코스 idx 목록(중복 제거, 부여 순서 유지)
+        List<Long> courseIdxList = enrollmentRepository.findByUserIdx(userIdx).stream()
+                .map(Enrollment::getCourseIdx)
+                .distinct()
+                .toList();
+
+        if (courseIdxList.isEmpty()) {
+            return List.of();
+        }
+
+        List<Course> courses = courseRepository.findAllById(courseIdxList);
+        if (courses.isEmpty()) {
+            return List.of();
+        }
+
+        // 1) 사용자의 코스별 완료 강의 idx 목록(단일 쿼리)
+        Map<Long, List<Long>> completedLectureIdxByCourse = lectureCompleteRepository
+                .findByUserIdxAndCourseIdxIn(userIdx, courseIdxList).stream()
+                .collect(Collectors.groupingBy(
+                        lc -> lc.getCourse().getIdx(),
+                        Collectors.mapping(lc -> lc.getLecture().getIdx(), Collectors.toList())
+                ));
+
+        // 2) 코스별 전체 강의를 idx 순으로(단일 쿼리)
+        Map<Long, List<Lecture>> lecturesByCourse = lectureRepository
+                .findAllByCourseIdxInOrderByLectureIdxAsc(courseIdxList).stream()
+                .collect(Collectors.groupingBy(
+                        lecture -> lecture.getSection().getCourse().getIdx(),
+                        java.util.LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        return courses.stream()
+                .map(course -> {
+                    List<Long> completes = completedLectureIdxByCourse.getOrDefault(course.getIdx(), List.of());
+                    Long nextLectureIdx = resolveNextLectureIdx(
+                            lecturesByCourse.getOrDefault(course.getIdx(), List.of()), completes);
+                    return CourseDto.CourseRes.of(course, nextLectureIdx, completes);
+                })
+                .toList();
+    }
+
+    /**
+     * 이어듣기(다음 강의) idx 계산. readNextLecture 와 동일 규칙을 메모리에서 처리한다.
+     * - 강의가 없으면 0, 완료 없음/마지막까지 완료면 첫 강의, 그 외엔 최신 완료 다음 강의(없으면 첫 강의).
+     */
+    private Long resolveNextLectureIdx(List<Lecture> orderedLectures, List<Long> completedLectureIdxList) {
+        if (orderedLectures.isEmpty()) {
+            return 0L;
+        }
+        long maxCompleted = completedLectureIdxList.stream().mapToLong(Long::longValue).max().orElse(0L);
+        Long lastIdx = orderedLectures.get(orderedLectures.size() - 1).getIdx();
+        if (maxCompleted == 0L || lastIdx.equals(maxCompleted)) {
+            return orderedLectures.get(0).getIdx();
+        }
+        return orderedLectures.stream()
+                .map(Lecture::getIdx)
+                .filter(idx -> idx > maxCompleted)
+                .findFirst()
+                .orElse(orderedLectures.get(0).getIdx());
+    }
+
     // === 내부 헬퍼 ===
 
     /** 코스별 수강권(주문) 수 집계 맵. */

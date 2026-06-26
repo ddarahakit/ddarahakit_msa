@@ -18,8 +18,6 @@ public class RoutesConfig {
                                      @Value("${monolith.uri}") String monolithUri) {
         return builder.routes()
                 // ── 1단계: identity-service (인증/프로필) ──
-                // 주의: 마이페이지 집계(/user/ordered·myreview·mypost·myquestion·payments·study/weekly)는
-                //       identity 에 없으므로 여기서 제외 → 아래 monolith 캐치올로 떨어진다.
                 .route("identity", r -> r.path(
                                 "/user/login", "/user/social/**", "/user/logout", "/user/logout/all",
                                 "/user/token/**", "/user/signup", "/user/email/**", "/user/check",
@@ -27,19 +25,29 @@ public class RoutesConfig {
                                 "/oauth2/**", "/login/oauth2/**")
                         .uri("lb://identity-service"))
 
-                // ── 2단계: community-service ──
-                .route("community", r -> r.path("/community/**").uri("lb://community-service"))
+                // ── 2단계: community-service (+마이페이지: 내 글/질문) ──
+                .route("community", r -> r.path(
+                                "/community/**", "/user/mypost", "/user/myquestion")
+                        .uri("lb://community-service"))
 
-                // ── 3단계: commerce-service (주문/장바구니) ──
-                .route("commerce", r -> r.path("/orders/**", "/cart/**").uri("lb://commerce-service"))
+                // ── 3단계: commerce-service (주문/장바구니 +마이페이지: 결제내역) ──
+                .route("commerce", r -> r.path(
+                                "/orders/**", "/cart/**", "/user/payments")
+                        .uri("lb://commerce-service"))
 
-                // ── 4단계: review-service (수강평) ──
-                .route("review", r -> r.path("/review/**").uri("lb://review-service"))
+                // ── 4단계: review-service (수강평 +마이페이지: 내 리뷰) ──
+                .route("review", r -> r.path(
+                                "/review/**", "/user/myreview")
+                        .uri("lb://review-service"))
 
-                // ── 5단계: course-service (코어: 코스/강의/로드맵/통계) ──
-                .route("course", r -> r.path("/course/**", "/roadmap/**", "/stats/**").uri("lb://course-service"))
+                // ── 5단계: course-service (코어 +마이페이지: 내 강의실/주간학습) ──
+                .route("course", r -> r.path(
+                                "/course/**", "/roadmap/**", "/stats/**",
+                                "/user/ordered", "/user/study/**")
+                        .uri("lb://course-service"))
 
-                // 나머지 전부 모놀리스로 (Strangler 잔여)
+                // 마이페이지 집계까지 전부 서비스로 이전 → 모놀리스로 가는 트래픽 없음(은퇴 대상).
+                // 미라우팅 요청 안전망으로만 잔존.
                 .route("monolith", r -> r.path("/**").uri(monolithUri))
                 .build();
     }

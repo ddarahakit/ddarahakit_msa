@@ -4,6 +4,7 @@ import com.ddarahakit.common.event.EventType;
 import com.ddarahakit.common.event.Topics;
 import com.ddarahakit.common.event.payload.ReviewEvents;
 import com.ddarahakit.review.client.CourseClient;
+import com.ddarahakit.review.client.CourseNameClient;
 import com.ddarahakit.review.client.IdentityClient;
 import com.ddarahakit.review.common.exception.BaseException;
 import com.ddarahakit.review.config.security.AuthUserDetails;
@@ -24,8 +25,34 @@ import static com.ddarahakit.review.common.model.BaseResponseStatus.*;
 public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final CourseClient courseClient;
+    private final CourseNameClient courseNameClient;
     private final IdentityClient identityClient;
     private final OutboxAppender outboxAppender;
+
+    /**
+     * 내 리뷰: 현재 사용자가 작성한 리뷰 목록.
+     * 모놀리스 UserService.getMyReviewList 이식. 코스명은 course-service Feign 으로 조회(실패 시 null 폴백),
+     * 동일 코스 중복 호출을 피하기 위해 코스명을 캐시한다.
+     */
+    public java.util.List<ReviewDto.MyReviewRes> getMyReviewList(AuthUserDetails authUserDetails) {
+        java.util.List<Review> reviews = reviewRepository.findByUserIdx(authUserDetails.getIdx());
+        java.util.Map<Long, String> courseNameCache = new java.util.HashMap<>();
+        return reviews.stream()
+                .map(review -> ReviewDto.MyReviewRes.of(
+                        review,
+                        courseNameCache.computeIfAbsent(review.getCourseIdx(), this::resolveCourseName)))
+                .toList();
+    }
+
+    /** course-service 에서 코스명 조회. 실패 시 null 폴백(목록 200 보장). */
+    private String resolveCourseName(Long courseIdx) {
+        try {
+            CourseNameClient.CourseResponse res = courseNameClient.get(courseIdx);
+            return res != null && res.results() != null ? res.results().name() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     public ReviewDto.ReviewPageRes readReview(AuthUserDetails authUserDetails, Long courseIdx, Pageable pageable) {
         requireCourse(courseIdx);

@@ -37,6 +37,9 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/error").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
 
+                        // 마이페이지(결제 내역) — 인증 필요
+                        .requestMatchers(GET, "/user/payments").authenticated()
+
                         // === 주문/장바구니는 전부 인증 필요 ===
                         .requestMatchers(GET, "/orders/**", "/cart/**").authenticated()
                         .requestMatchers(POST, "/orders/**", "/cart/**").authenticated()

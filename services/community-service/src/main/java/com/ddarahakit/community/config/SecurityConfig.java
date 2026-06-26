@@ -37,6 +37,9 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/error").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
 
+                        // 마이페이지(내 질문/내 게시글) — 인증 필요
+                        .requestMatchers(GET, "/user/myquestion", "/user/mypost").authenticated()
+
                         // === 공개(비로그인 허용) 조회 엔드포인트 ===
                         .requestMatchers(GET, "/community/**").permitAll()
 

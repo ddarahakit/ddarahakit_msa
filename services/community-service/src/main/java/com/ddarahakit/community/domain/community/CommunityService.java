@@ -49,6 +49,43 @@ public class CommunityService {
     private final IdentityClient identityClient;
 
     /**
+     * 내 질문: 현재 사용자가 작성한 질문(QUESTION) 게시글 목록.
+     * 모놀리스 UserService.getMyQuestionList 이식. 작성자/코스명은 post 스냅샷에서 사용.
+     */
+    public List<PostSummaryResponse> getMyQuestionList(AuthUserDetails authUserDetails) {
+        List<Post> posts = postRepository.findByUserIdxAndPostTypeWithCourse(
+                authUserDetails.getIdx(), PostType.QUESTION);
+        return toSummariesWithCommentCount(posts);
+    }
+
+    /**
+     * 내 게시글: 현재 사용자가 작성한 게시글(질문/공지 제외) 목록.
+     * 모놀리스 UserService.getMyPostList 이식.
+     */
+    public List<PostSummaryResponse> getMyPostList(AuthUserDetails authUserDetails) {
+        List<PostType> excludeTypes = List.of(PostType.QUESTION, PostType.NOTICE);
+        List<Post> posts = postRepository.findByUserIdxAndPostTypeNotInWithCourse(
+                authUserDetails.getIdx(), excludeTypes);
+        return toSummariesWithCommentCount(posts);
+    }
+
+    /**
+     * 게시글 목록 → 요약 DTO 변환. 댓글 수는 일괄 COUNT 로 집계해
+     * 게시글마다 comments 컬렉션(LONGTEXT 본문 포함)을 로딩하던 낭비를 제거한다.
+     */
+    private List<PostSummaryResponse> toSummariesWithCommentCount(List<Post> posts) {
+        if (posts.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Long> commentCountMap = commentRepository.countByPostIn(posts).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+        return posts.stream()
+                .map(post -> PostSummaryResponse.from(
+                        post, 0L, false, commentCountMap.getOrDefault(post.getIdx(), 0L)))
+                .toList();
+    }
+
+    /**
      * 게시글 목록 조회
      * - postType: 게시글 타입으로 필터링
      * - keyword: 제목/내용 검색
