@@ -13,6 +13,10 @@
 | [docs/01-services.md](docs/01-services.md) | 서비스별 상세 명세(소유 테이블·마이그레이션 엔드포인트·발행/구독 이벤트·동기 의존·FK 절단) |
 | [docs/02-event-driven-kafka.md](docs/02-event-driven-kafka.md) | Kafka 토픽 설계·트랜잭션 아웃박스·멱등 소비·재시도/DLT·구매 Saga·평점 투영 |
 | [docs/03-auth-gateway.md](docs/03-auth-gateway.md) | 게이트웨이 라우팅·JWT 검증·신원 전파·OAuth2·토큰 회전·마이페이지 BFF |
+| [docs/04-database-schema.md](docs/04-database-schema.md) | 서비스별 스키마 DDL 분할(실제 컬럼 기준)·FK 절단·신규 테이블(enrollment/outbox)·데이터 마이그레이션 |
+| [docs/05-common-events.md](docs/05-common-events.md) | 공통 모듈 이벤트 계약 코드(봉투·페이로드 record·직렬화·아웃박스/소비 예시) |
+| [docs/06-docker-compose.md](docs/06-docker-compose.md) | 전체 스택 compose(MariaDB·Kafka KRaft·Eureka·Gateway·5서비스)·스키마 초기화·포트맵 |
+| [docs/07-package-structure.md](docs/07-package-structure.md) | Gradle 멀티모듈·서비스별 패키지 구조·헤더 인증 필터·게이트웨이/디스커버리 |
 
 ---
 
