@@ -196,6 +196,25 @@ services:
       kafka: { condition: service_healthy }
     networks: [msa-net]
 
+  # ---------- course-service (5단계 코어 추출, 이벤트 소비자 enrollment/rating) ----------
+  course-service:
+    build:
+      context: .
+      dockerfile: services/course-service/Dockerfile
+    image: ddarahakit/msa-course:dev
+    container_name: msa-course
+    environment:
+      DB_URL: "jdbc:mariadb://mariadb:3306/course_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+    depends_on:
+      mariadb: { condition: service_healthy }
+      eureka: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+    networks: [msa-net]
+
   # ---------- 모놀리스 (0단계 Strangler 대상) ----------
   monolith:
     build:

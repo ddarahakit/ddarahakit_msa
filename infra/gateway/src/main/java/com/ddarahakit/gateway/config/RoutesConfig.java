@@ -36,6 +36,9 @@ public class RoutesConfig {
                 // ── 4단계: review-service (수강평) ──
                 .route("review", r -> r.path("/review/**").uri("lb://review-service"))
 
+                // ── 5단계: course-service (코어: 코스/강의/로드맵/통계) ──
+                .route("course", r -> r.path("/course/**", "/roadmap/**", "/stats/**").uri("lb://course-service"))
+
                 // 나머지 전부 모놀리스로 (Strangler 잔여)
                 .route("monolith", r -> r.path("/**").uri(monolithUri))
                 .build();

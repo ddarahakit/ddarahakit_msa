@@ -198,4 +198,5 @@ ddarahakit_msa/
 - [x] **2단계: community-service** (community_db, 헤더인증, FK 평문화+스냅샷, identity Feign, E2E 검증) → [docs/10](docs/10-phase2-community.md)
 - [x] **3단계: commerce-service** (commerce_db, 모놀리스 Feign 가격검증, **트랜잭션 아웃박스→Kafka `OrderPaid`**, E2E 검증) → [docs/11](docs/11-phase3-commerce.md)
 - [x] **4단계: review-service** (review_db, `UPDATE Course SET rating` 제거 → **`ReviewCreated/Updated/Deleted` Kafka 발행**, E2E 검증) → [docs/12](docs/12-phase4-review.md)
-- [ ] 5단계: course-service 코어 + stats BFF (`OrderPaid`·`Review*` 구독 → enrollment·rating 투영)
+- [x] **5단계: course-service 코어 + 이벤트 소비자** (course_db, **OrderPaid→enrollment·Review*→rating 투영 소비자**, 수강권/평점 E2E 검증) → [docs/13](docs/13-phase5-course.md)
+- [ ] (후속) 마이페이지 BFF: 모놀리스 잔여 집계(/user/ordered·myreview·mypost·myquestion·payments·study)를 게이트웨이 BFF 로
