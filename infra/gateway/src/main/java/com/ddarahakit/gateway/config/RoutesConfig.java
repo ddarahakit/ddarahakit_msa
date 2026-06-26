@@ -17,11 +17,17 @@ public class RoutesConfig {
     public RouteLocator routeLocator(RouteLocatorBuilder builder,
                                      @Value("${monolith.uri}") String monolithUri) {
         return builder.routes()
-                // ── 1단계부터 추가될 예: identity-service ──
-                // .route("identity", r -> r.path("/user/**", "/oauth2/**", "/login/oauth2/**")
-                //         .uri("lb://identity-service"))
+                // ── 1단계: identity-service (인증/프로필) ──
+                // 주의: 마이페이지 집계(/user/ordered·myreview·mypost·myquestion·payments·study/weekly)는
+                //       identity 에 없으므로 여기서 제외 → 아래 monolith 캐치올로 떨어진다.
+                .route("identity", r -> r.path(
+                                "/user/login", "/user/social/**", "/user/logout", "/user/logout/all",
+                                "/user/token/**", "/user/signup", "/user/email/**", "/user/check",
+                                "/user/uuid/**", "/user/password/**", "/user/profile",
+                                "/oauth2/**", "/login/oauth2/**")
+                        .uri("lb://identity-service"))
 
-                // 0단계: 나머지 전부 모놀리스로
+                // 나머지 전부 모놀리스로 (Strangler 잔여)
                 .route("monolith", r -> r.path("/**").uri(monolithUri))
                 .build();
     }

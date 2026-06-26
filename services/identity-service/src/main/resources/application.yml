@@ -1,0 +1,97 @@
+spring:
+  application:
+    name: identity-service
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+  datasource:
+    url: ${DB_URL:jdbc:mariadb://localhost:3306/identity_db}
+    driver-class-name: org.mariadb.jdbc.Driver
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+  jpa:
+    database-platform: org.hibernate.dialect.MariaDBDialect
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_ADDR}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          starttls:
+            enable: true
+            required: true
+          auth: true
+          timeout: 5000
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: ${GOOGLE_REDIRECT_URI}
+            scope:
+              - email
+              - profile
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            client-name: Kakao
+            authorization-grant-type: authorization_code
+            redirect-uri: ${KAKAO_REDIRECT_URI}
+            scope: profile_nickname
+            client-authentication-method: client_secret_post
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+
+server:
+  port: 8080
+
+jwt:
+  secret:
+    key: ${JWT_SECRET}
+
+app:
+  domain:
+    server: ${APP_DOMAIN_SERVER:http://localhost}
+    cookie: ${APP_DOMAIN_COOKIE:localhost}
+  aes:
+    key: ${AES_SECRET_KEY:devAesSecretKey1234567890123456}  # 32자 (AES-256), 운영 환경에서 반드시 환경 변수로 교체
+  token:
+    access-max-age: 1800000  # 30분 (밀리초)
+    refresh-max-age: 604800000  # 7일 (밀리초)
+    # 로컬은 http://localhost 이므로 Secure 제거, SameSite=Lax
+    access-format: "ATOKEN=%s; HttpOnly; SameSite=Lax; Domain=localhost; Path=/; Max-Age=%d"
+    refresh-format: "RTOKEN=%s; HttpOnly; SameSite=Lax; Domain=localhost; Path=/; Max-Age=%d"
+
+project:
+  upload:
+    path: ${UPLOAD_PATH:./uploads}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

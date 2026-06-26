@@ -8,6 +8,7 @@
 common/build/
 infra/discovery/build/
 infra/gateway/build/
+services/*/build/
 
 # OS
 .DS_Store

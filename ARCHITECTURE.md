@@ -194,7 +194,7 @@ ddarahakit_msa/
 - [x] 심화 설계 (docs/01~03: 서비스·Kafka·인증)
 - [x] 구현 상세 설계 (docs/04~07: 스키마·이벤트계약·compose·패키지)
 - [x] **0단계: 스캐폴딩** (모노레포 + common + Eureka + Gateway + compose, 모놀리스 정적 라우팅) → [docs/08](docs/08-phase0-scaffolding.md)
-- [ ] 1단계: identity-service
+- [x] **1단계: identity-service** (인증/프로필 추출, identity_db, 게이트웨이 라우팅, 로그인 E2E 검증) → [docs/09](docs/09-phase1-identity.md)
 - [ ] 2단계: community-service
 - [ ] 3단계: commerce-service (`OrderPaid`)
 - [ ] 4단계: review-service (`ReviewCreated`)
