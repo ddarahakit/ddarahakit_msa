@@ -37,6 +37,13 @@ const SCREEN_H_KEY = 'mentoringScreenHeight'
 const screenHeight = ref(Number(localStorage.getItem(SCREEN_H_KEY)) || 320)
 const isResizing = ref(false)
 
+// 화면 공유 상호배타: 한 번에 한 쪽만 공유, 반대편은 보기 전용
+const peerSharing = ref(false)        // 상대가 공유 중 → 나는 보기 전용
+const shareRequested = ref(false)     // 상대가 나에게 공유를 요청함(배너 표시)
+const requestSentTip = ref(false)     // 내가 요청을 보냈다는 짧은 안내
+let shareRequestTimer = null
+let requestSentTimer = null
+
 let peerConnection = null
 let localStream = null
 let localVideoSender = null
@@ -47,7 +54,7 @@ const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://'
 const wsUrl = import.meta.env.VITE_MENTORING_WS_URL || `${wsProtocol}${window.location.host}/ws`
 const { send, onMessage } = useMentoringSocket({ url: wsUrl })
 
-const screenVisible = computed(() => isScreenSharing.value || hasRemoteStream.value)
+const screenVisible = computed(() => isScreenSharing.value || hasRemoteStream.value || peerSharing.value)
 
 const rtcConfig = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -188,6 +195,8 @@ const makeOffer = async () => {
 }
 
 const startScreenShare = async () => {
+  // 상대가 공유 중이면 시작 불가(보기 전용)
+  if (peerSharing.value) return
   try {
     const stream = await navigator.mediaDevices.getDisplayMedia({
       video: true,
@@ -197,6 +206,9 @@ const startScreenShare = async () => {
     const track = stream.getVideoTracks()[0]
     localStream = stream
     isScreenSharing.value = true
+    shareRequested.value = false
+    // 내가 공유를 시작했음을 상대에게 알려 상대 쪽 공유 버튼을 잠근다
+    send({ type: 'share-started', sessionId: String(props.sessionId) })
 
     if (localVideoRef.value) {
       localVideoRef.value.srcObject = stream
@@ -240,6 +252,31 @@ const stopScreenShare = (notifyOther = false) => {
   resetPeerConnection()
 }
 
+// 상대에게 화면 공유를 요청한다(아무도 공유하지 않을 때만 의미 있음)
+const requestShare = () => {
+  if (isScreenSharing.value || peerSharing.value) return
+  send({
+    type: 'share-request',
+    sessionId: String(props.sessionId),
+    from: currentUserName.value
+  })
+  requestSentTip.value = true
+  clearTimeout(requestSentTimer)
+  requestSentTimer = setTimeout(() => { requestSentTip.value = false }, 3000)
+}
+
+// 상대의 공유 요청을 수락 → 내가 공유 시작
+const acceptShareRequest = () => {
+  shareRequested.value = false
+  clearTimeout(shareRequestTimer)
+  startScreenShare()
+}
+
+const dismissShareRequest = () => {
+  shareRequested.value = false
+  clearTimeout(shareRequestTimer)
+}
+
 const handleSocketMessage = async (payload) => {
   const data = normalizeIncoming(payload)
   if (!data || String(data.sessionId) !== String(props.sessionId)) return
@@ -255,7 +292,23 @@ const handleSocketMessage = async (payload) => {
     return
   }
 
+  if (data.type === 'share-request') {
+    // 내가/상대가 공유 중이면 요청 무시, 아니면 요청 배너 표시(20초 후 자동 닫힘)
+    if (isScreenSharing.value || peerSharing.value) return
+    shareRequested.value = true
+    clearTimeout(shareRequestTimer)
+    shareRequestTimer = setTimeout(() => { shareRequested.value = false }, 20000)
+    return
+  }
+
+  if (data.type === 'share-started') {
+    peerSharing.value = true       // 상대가 공유 시작 → 나는 보기 전용
+    shareRequested.value = false   // 내가 보냈던 요청 배너는 닫는다
+    return
+  }
+
   if (data.type === 'offer' && data.offer) {
+    peerSharing.value = true       // 상대가 영상을 보내옴 = 상대 공유 중(보강)
     await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer))
     const answer = await peerConnection.createAnswer()
     await peerConnection.setLocalDescription(answer)
@@ -285,6 +338,7 @@ const handleSocketMessage = async (payload) => {
   }
 
   if (data.type === 'share-stopped') {
+    peerSharing.value = false
     hasRemoteStream.value = false
     if (remoteVideoRef.value) {
       remoteVideoRef.value.srcObject = null
@@ -353,6 +407,9 @@ watch(
   async () => {
     messages.value = []
     hasRemoteStream.value = false
+    peerSharing.value = false
+    shareRequested.value = false
+    clearTimeout(shareRequestTimer)
     resetPeerConnection()
     await loadSessionDetail()
     joinSession()
@@ -362,6 +419,8 @@ watch(
 onUnmounted(() => {
   window.removeEventListener('mousemove', onResize)
   window.removeEventListener('mouseup', stopResize)
+  clearTimeout(shareRequestTimer)
+  clearTimeout(requestSentTimer)
   if (unsubscribeSocket) unsubscribeSocket()
   stopScreenShare(false)
   if (peerConnection) {
@@ -397,7 +456,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div class="absolute top-4 right-4 flex gap-2 z-50">
+        <div v-if="isScreenSharing" class="absolute top-4 right-4 flex gap-2 z-50">
           <button
             id="btn-stop-share"
             type="button"
@@ -441,19 +500,66 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <button
-        id="btn-screen-share"
-        type="button"
-        @click="startScreenShare"
-        class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect width="18" height="14" x="3" y="5" rx="2" ry="2"></rect>
-          <path d="M17 21v-2"></path>
-          <path d="M7 21v-2"></path>
-          <path d="M9 21h6"></path>
-        </svg>
-        {{ isScreenSharing ? '공유 중' : '화면 공유 시작' }}
-      </button>
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- 내가 공유 중 → 중지 -->
+        <button
+          v-if="isScreenSharing"
+          type="button"
+          @click="stopScreenShare(true)"
+          class="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm">
+          <i class="fa-solid fa-stop"></i>
+          공유 중지
+        </button>
+
+        <!-- 상대가 공유 중 → 보기 전용(공유 불가) -->
+        <span
+          v-else-if="peerSharing"
+          class="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-xs font-bold">
+          <i class="fa-regular fa-eye"></i>
+          상대방 공유 중 · 보기 전용
+        </span>
+
+        <!-- 아무도 공유 안 함 → 공유 요청 / 화면 공유 시작 -->
+        <template v-else>
+          <button
+            type="button"
+            @click="requestShare"
+            :disabled="requestSentTip"
+            title="상대방에게 화면 공유를 요청합니다"
+            class="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-60 disabled:cursor-default">
+            <i class="fa-solid fa-hand-point-up"></i>
+            {{ requestSentTip ? '요청 보냄 ✓' : '공유 요청' }}
+          </button>
+          <button
+            id="btn-screen-share"
+            type="button"
+            @click="startScreenShare"
+            class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="14" x="3" y="5" rx="2" ry="2"></rect>
+              <path d="M17 21v-2"></path>
+              <path d="M7 21v-2"></path>
+              <path d="M9 21h6"></path>
+            </svg>
+            화면 공유 시작
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <!-- 상대가 보낸 화면 공유 요청 배너 -->
+    <div v-if="shareRequested"
+      class="bg-blue-50 border-b border-blue-100 px-4 py-2.5 flex items-center justify-between gap-3">
+      <span class="flex items-center gap-2 text-xs font-bold text-blue-700 min-w-0">
+        <i class="fa-solid fa-circle-info shrink-0"></i>
+        <span class="truncate">{{ counterpart.other?.name || '상대방' }}님이 화면 공유를 요청했어요</span>
+      </span>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button type="button" @click="acceptShareRequest"
+          class="px-3 py-1.5 bg-[#14BCED] text-white rounded-lg text-xs font-bold hover:opacity-90 transition">지금 공유</button>
+        <button type="button" @click="dismissShareRequest"
+          class="px-3 py-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg text-xs font-bold hover:bg-slate-50 transition">나중에</button>
+      </div>
     </div>
 
     <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar flex flex-col">
