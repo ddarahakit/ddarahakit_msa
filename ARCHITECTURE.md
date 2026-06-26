@@ -154,7 +154,7 @@ ddarahakit_msa/
 │   ├─ community-service/
 │   └─ review-service/
 ├─ common/                   # 이벤트 스키마 · BaseResponse (공유 최소화)
-├─ legacy/                   # 기존 모놀리스 (Strangler 대상, 단계적 제거)
+├─ monolith/                 # 기존 모놀리스 (Strangler 대상, 단계적 제거)
 └─ docker-compose.yml        # mariadb · kafka · eureka · gateway · services
 ```
 > `common` 모듈은 **이벤트 계약·공통 응답만** 담아 "공유 라이브러리 과결합" 안티패턴을 피한다.
