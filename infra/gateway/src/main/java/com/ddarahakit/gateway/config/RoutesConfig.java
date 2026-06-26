@@ -33,6 +33,9 @@ public class RoutesConfig {
                 // ── 3단계: commerce-service (주문/장바구니) ──
                 .route("commerce", r -> r.path("/orders/**", "/cart/**").uri("lb://commerce-service"))
 
+                // ── 4단계: review-service (수강평) ──
+                .route("review", r -> r.path("/review/**").uri("lb://review-service"))
+
                 // 나머지 전부 모놀리스로 (Strangler 잔여)
                 .route("monolith", r -> r.path("/**").uri(monolithUri))
                 .build();
