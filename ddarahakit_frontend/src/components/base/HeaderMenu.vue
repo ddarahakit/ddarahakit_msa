@@ -59,9 +59,6 @@ const logout = () => {
                     <RouterLink :to="{ name: 'courseList' }" @click="closeHeaderMenu">실제 수업</RouterLink>
                 </li>
                 <li class="menu_mm">
-                    <RouterLink :to="{ name: 'mentoring' }" @click="closeHeaderMenu">멘토링</RouterLink>
-                </li>
-                <li class="menu_mm">
                     <RouterLink :to="{ name: 'roadmap' }" @click="closeHeaderMenu">로드맵</RouterLink>
                 </li>
                 <li class="menu_mm">

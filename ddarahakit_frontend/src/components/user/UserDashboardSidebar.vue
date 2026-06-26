@@ -19,6 +19,14 @@ const menuItems = computed(() => [
         to: { name: 'dashboard' }
     },
     {
+        key: 'mentoring',
+        label: '멘토링',
+        icon: 'fa-solid fa-comments text-sm',
+        to: { name: 'mentoring' },
+        // 멘토링은 history/schedule 등 하위 라우트가 있어 경로 prefix 로 활성 판정
+        match: (r) => r.path.startsWith('/mentoring')
+    },
+    {
         key: 'accountSecurity',
         label: '비밀번호 변경',
         icon: 'fa-solid fa-lock text-sm',
@@ -32,8 +40,9 @@ const menuItems = computed(() => [
     }
 ])
 
-const isActiveMenu = (key) => {
-    return route.name === key
+const isActiveMenu = (item) => {
+    if (typeof item.match === 'function') return item.match(route)
+    return route.name === item.key
 }
 </script>
 
@@ -49,7 +58,7 @@ const isActiveMenu = (key) => {
                 :key="item.key"
                 :to="item.to"
                 class="flex items-center gap-3 px-4 py-3 transition-all font-medium"
-                :class="isActiveMenu(item.key)
+                :class="isActiveMenu(item)
                     ? 'sidebar-item-active font-bold'
                     : 'text-slate-500 hover:text-slate-800'">
                 <i :class="item.icon"></i> {{ item.label }}
