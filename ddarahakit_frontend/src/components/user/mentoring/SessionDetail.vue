@@ -3,6 +3,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import useAuthStore from '@/stores/useAuthStore'
 import api from '@/api/mentoring'
 import { useMentoringSocket } from '@/composables/useMentoringSocket'
+import MentoringAvatar from '@/components/user/mentoring/MentoringAvatar.vue'
+import { getCounterpart, formatSchedule } from '@/utils/mentoring'
 
 const props = defineProps({
   sessionId: {
@@ -12,6 +14,7 @@ const props = defineProps({
 })
 
 const authStore = useAuthStore()
+const myIdx = authStore.getUserIdx()
 
 const messages = ref([])
 const inputMessage = ref('')
@@ -19,6 +22,9 @@ const sessionMeta = ref({
   title: '세션 제목',
   date: '날짜 정보'
 })
+const sessionInfo = ref({})
+const counterpart = computed(() => getCounterpart(sessionInfo.value, myIdx))
+const sessionStatus = computed(() => sessionInfo.value.status || 'OPEN')
 
 const localVideoRef = ref(null)
 const remoteVideoRef = ref(null)
@@ -125,11 +131,16 @@ const resolveSenderName = (item) => {
   return item.senderName || item.userName || ''
 }
 
-const mapMessage = (item) => ({
-  from: resolveSenderName(item),
-  message: item.message || item.text || '',
-  time: item.time || item.createdAt || ''
-})
+const mapMessage = (item) => {
+  const senderIdx = item.sender?.idx ?? item.senderIdx ?? null
+  return {
+    from: resolveSenderName(item),
+    fromIdx: senderIdx,
+    message: item.message || item.text || '',
+    time: item.time || item.createdAt || '',
+    mine: myIdx != null && senderIdx != null && Number(senderIdx) === Number(myIdx),
+  }
+}
 
 const loadSessionDetail = async () => {
   const res = await api.detail(props.sessionId)
@@ -154,9 +165,10 @@ const loadSessionDetail = async () => {
   // 목록은 최신순(DESC)으로 오므로, 채팅은 오래된→최신 순서가 되도록 뒤집는다.
   messages.value = rawList.map(mapMessage).reverse()
 
+  sessionInfo.value = session
   sessionMeta.value = {
-    title: session.subject || session.title || '세션 제목',
-    date: session.scheduledAt || session.sessionDate || session.date || '날짜 정보'
+    title: session.subject || session.title || '멘토링 세션',
+    date: formatSchedule(session.scheduledAt || session.sessionDate || session.date)
   }
 }
 
@@ -233,8 +245,10 @@ const handleSocketMessage = async (payload) => {
   if (data.type === 'chat-message' || data.type === 'chat') {
     appendMessage({
       from: data.from || data.sender || '',
+      fromIdx: data.fromIdx ?? null,
       message: data.message || data.text || '',
-      time: data.time || ''
+      time: data.time || '',
+      mine: false
     })
     return
   }
@@ -284,8 +298,10 @@ const sendChat = async () => {
     type: 'chat-message',
     sessionId: String(props.sessionId),
     from: currentUserName.value,
+    fromIdx: myIdx,
     message: text,
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+    mine: true
   }
 
   appendMessage(message)
@@ -391,17 +407,28 @@ onUnmounted(() => {
       <div id="resize-handle" @mousedown="startResize"></div>
     </div>
 
-    <div id="chat-header" class="bg-white border-b border-slate-200 p-4 flex items-center justify-between">
-      <div class="flex items-center gap-4">
-        <div class="p-2 bg-blue-50 text-[#14BCED] rounded-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-          </svg>
-        </div>
-        <div>
-          <h3 id="active-session-title" class="font-bold text-sm text-slate-800">{{ sessionMeta.title }}</h3>
-          <p id="active-session-date" class="text-[11px] text-slate-400">세션 진행일: {{ sessionMeta.date }}</p>
+    <div id="chat-header" class="bg-white border-b border-slate-200 p-4 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <MentoringAvatar
+          :name="counterpart.other?.name"
+          :idx="counterpart.other?.idx"
+          :image="counterpart.other?.profileImageUrl"
+          :size="42" />
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5">
+            <h3 id="active-session-title" class="font-bold text-sm text-slate-800 truncate">
+              {{ counterpart.other?.name || '멘토링' }}
+            </h3>
+            <span class="text-[10px] font-semibold px-1.5 py-px rounded shrink-0"
+              :class="counterpart.otherRole === '멘토' ? 'bg-violet-50 text-violet-600' : 'bg-emerald-50 text-emerald-600'">
+              {{ counterpart.otherRole }}
+            </span>
+            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+              :class="sessionStatus === 'OPEN' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'">
+              {{ sessionStatus === 'OPEN' ? '진행중' : '종료' }}
+            </span>
+          </div>
+          <p id="active-session-date" class="text-[11px] text-slate-400 truncate">{{ sessionMeta.title }}</p>
         </div>
       </div>
 
@@ -424,14 +451,20 @@ onUnmounted(() => {
       <div
         v-for="(item, index) in messages"
         :key="`${index}-${item.time || ''}`"
-        :class="item.from === currentUserName ? 'flex-row-reverse' : 'flex-row'"
+        :class="item.mine ? 'flex-row-reverse' : 'flex-row'"
         class="flex items-end gap-2 w-full">
+        <MentoringAvatar
+          v-if="!item.mine"
+          :name="item.from"
+          :idx="item.fromIdx"
+          :size="28"
+          class="mb-4" />
         <div
-          :class="item.from === currentUserName ? 'chat-bubble-me' : 'chat-bubble-mentor'"
+          :class="item.mine ? 'chat-bubble-me' : 'chat-bubble-mentor'"
           class="max-w-[70%] p-3 text-sm shadow-sm rounded-2xl">
           {{ item.message }}
         </div>
-        <span class="text-[9px] text-slate-400 mb-1">{{ item.time || '' }}</span>
+        <span class="text-[9px] text-slate-400 mb-1 shrink-0">{{ item.time || '' }}</span>
       </div>
     </div>
 

@@ -2,12 +2,18 @@
 import api from '@/api/mentoring'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import useAuthStore from '@/stores/useAuthStore'
 import SessionList from '@/components/user/mentoring/SessionList.vue'
 import SessionDetail from '@/components/user/mentoring/SessionDetail.vue'
 import SessionDefault from '@/components/user/mentoring/SessionDefault.vue'
+import MentoringAvatar from '@/components/user/mentoring/MentoringAvatar.vue'
+import { getCounterpart, formatSchedule } from '@/utils/mentoring'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
+const myIdx = authStore.getUserIdx()
+const partyOf = (session) => getCounterpart(session, myIdx)
 
 const mentoringList = reactive([])
 const scheduleDetail = ref(null)
@@ -141,30 +147,71 @@ watch(
         </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div v-if="mentoringList.length" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <button
           type="button"
           @click="openScheduleSession(session)"
           v-for="session in mentoringList"
           :key="`schedule-${getSessionId(session)}`"
-          class="text-left bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:border-brand/40 transition-all"
+          class="text-left bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:border-brand/40 hover:shadow-md transition-all"
           :class="String(getSessionId(session)) === String(selectedScheduleId) ? 'ring-2 ring-blue-100 border-brand/30' : ''">
-          <h3 class="font-bold text-slate-800 mb-2">{{ session.subject || session.title || '멘토링 세션' }}</h3>
-          <p class="text-xs text-slate-500 mb-2">일정: {{ session.scheduledAt || session.sessionDate || session.updatedAt || '미정' }}</p>
-          <p class="text-xs text-slate-400">멘토: {{ session.mentorName || '미정' }}</p>
+          <div class="flex items-start justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <MentoringAvatar
+                :name="partyOf(session).other?.name"
+                :idx="partyOf(session).other?.idx"
+                :image="partyOf(session).other?.profileImageUrl"
+                :size="36" />
+              <div class="min-w-0">
+                <p class="text-sm font-bold text-slate-800 truncate">{{ partyOf(session).other?.name || '상대' }}</p>
+                <span class="text-[10px] font-semibold"
+                  :class="partyOf(session).otherRole === '멘토' ? 'text-violet-600' : 'text-emerald-600'">
+                  {{ partyOf(session).otherRole }}
+                </span>
+              </div>
+            </div>
+            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0"
+              :class="(session.status || 'OPEN') === 'OPEN' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'">
+              {{ (session.status || 'OPEN') === 'OPEN' ? '진행중' : '종료' }}
+            </span>
+          </div>
+          <h3 class="font-bold text-slate-800 mb-2 line-clamp-1">{{ session.subject || session.title || '멘토링 세션' }}</h3>
+          <p class="text-xs text-slate-500 flex items-center gap-1.5">
+            <i class="fa-regular fa-calendar text-slate-300"></i>
+            {{ formatSchedule(session.scheduledAt) }}
+          </p>
         </button>
       </div>
 
-      <section v-if="selectedScheduleId" class="mt-6 bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-        <h3 class="text-base font-bold text-slate-800 mb-3">일정 상세</h3>
+      <div v-else class="flex flex-col items-center justify-center text-center py-20 text-slate-400">
+        <div class="w-16 h-16 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center mb-4">
+          <i class="fa-regular fa-calendar text-2xl text-brand"></i>
+        </div>
+        <p class="text-sm font-medium text-slate-500">예정된 멘토링 일정이 없습니다</p>
+      </div>
+
+      <section v-if="selectedScheduleId && scheduleDetail" class="mt-6 bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+          <MentoringAvatar
+            :name="partyOf(scheduleDetail).other?.name"
+            :idx="partyOf(scheduleDetail).other?.idx"
+            :image="partyOf(scheduleDetail).other?.profileImageUrl"
+            :size="44" />
+          <div>
+            <p class="text-sm font-bold text-slate-800">{{ partyOf(scheduleDetail).other?.name || '상대' }}</p>
+            <span class="text-[11px] font-semibold"
+              :class="partyOf(scheduleDetail).otherRole === '멘토' ? 'text-violet-600' : 'text-emerald-600'">
+              {{ partyOf(scheduleDetail).otherRole }}
+            </span>
+          </div>
+        </div>
         <p class="text-sm text-slate-700 mb-2">
-          주제: {{ scheduleDetail?.subject || scheduleDetail?.title || '멘토링 세션' }}
-        </p>
-        <p class="text-sm text-slate-500 mb-2">
-          일정: {{ scheduleDetail?.scheduledAt || scheduleDetail?.sessionDate || scheduleDetail?.updatedAt || '미정' }}
+          <span class="text-slate-400">주제</span>
+          &nbsp;{{ scheduleDetail?.subject || scheduleDetail?.title || '멘토링 세션' }}
         </p>
         <p class="text-sm text-slate-500">
-          멘토: {{ scheduleDetail?.mentorName || '미정' }}
+          <span class="text-slate-400">일정</span>
+          &nbsp;{{ formatSchedule(scheduleDetail?.scheduledAt) }}
         </p>
       </section>
     </main>
