@@ -59,9 +59,6 @@ const logout = () => {
                     <RouterLink :to="{ name: 'courseList' }" @click="closeHeaderMenu">실제 수업</RouterLink>
                 </li>
                 <li class="menu_mm">
-                    <RouterLink :to="{ name: 'projectManagement' }" @click="closeHeaderMenu">포트폴리오</RouterLink>
-                </li>
-                <li class="menu_mm">
                     <RouterLink :to="{ name: 'communityList' }" @click="closeHeaderMenu">커뮤니티</RouterLink>
                 </li>
                 <template v-if="!isLogin">
