@@ -196,6 +196,6 @@ ddarahakit_msa/
 - [x] **0단계: 스캐폴딩** (모노레포 + common + Eureka + Gateway + compose, 모놀리스 정적 라우팅) → [docs/08](docs/08-phase0-scaffolding.md)
 - [x] **1단계: identity-service** (인증/프로필 추출, identity_db, 게이트웨이 라우팅, 로그인 E2E 검증) → [docs/09](docs/09-phase1-identity.md)
 - [x] **2단계: community-service** (community_db, 헤더인증, FK 평문화+스냅샷, identity Feign, E2E 검증) → [docs/10](docs/10-phase2-community.md)
-- [ ] 3단계: commerce-service (`OrderPaid`)
+- [x] **3단계: commerce-service** (commerce_db, 모놀리스 Feign 가격검증, **트랜잭션 아웃박스→Kafka `OrderPaid`**, E2E 검증) → [docs/11](docs/11-phase3-commerce.md)
 - [ ] 4단계: review-service (`ReviewCreated`)
 - [ ] 5단계: course-service 코어 + stats BFF

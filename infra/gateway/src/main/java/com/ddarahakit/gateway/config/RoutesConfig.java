@@ -30,6 +30,9 @@ public class RoutesConfig {
                 // ── 2단계: community-service ──
                 .route("community", r -> r.path("/community/**").uri("lb://community-service"))
 
+                // ── 3단계: commerce-service (주문/장바구니) ──
+                .route("commerce", r -> r.path("/orders/**", "/cart/**").uri("lb://commerce-service"))
+
                 // 나머지 전부 모놀리스로 (Strangler 잔여)
                 .route("monolith", r -> r.path("/**").uri(monolithUri))
                 .build();

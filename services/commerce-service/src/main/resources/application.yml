@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: commerce-service
+  datasource:
+    url: ${DB_URL:jdbc:mariadb://localhost:3306/commerce_db}
+    driver-class-name: org.mariadb.jdbc.Driver
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+  jpa:
+    database-platform: org.hibernate.dialect.MariaDBDialect
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+server:
+  port: 8080
+
+# 모놀리스로의 가격 검증 Feign 대상 (course-service 가 아직 없으므로 직접 호출)
+monolith:
+  url: ${MONOLITH_URL:http://localhost:8081}
+
+portone:
+  portone_secret: ${PORTONE_SECRET:dummy}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
