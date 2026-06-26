@@ -1,0 +1,145 @@
+# ============================================================================
+#  MSA 스택 (0단계: Strangler Fig — 게이트웨이 뒤에 모놀리스)
+#    Client → gateway(8080) → monolith(내부 8080)
+#    인프라(mariadb·kafka·eureka)는 1단계부터 추출될 서비스를 위해 미리 기동.
+#
+#  ※ 기존 운영 스택(docker-compose.yml)과 포트가 겹치지 않게 mariadb 는 3307 로 노출.
+#     이 스택은 MSA 개발용으로 별도 실행한다.
+#  실행:  docker compose -f docker-compose.msa.yml up -d --build
+# ============================================================================
+name: ddarahakit-msa
+
+services:
+  # ---------- 인프라 ----------
+  mariadb:
+    image: mariadb:11.4
+    container_name: msa-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+      MARIADB_USER: "${DB_USER}"
+      MARIADB_PASSWORD: "${DB_PASSWORD}"
+      TZ: Asia/Seoul
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    ports: ["3307:3306"]                                  # 운영 3306 과 충돌 회피
+    volumes:
+      - msa_mariadb_data:/var/lib/mysql
+      - ./infra/db/init:/docker-entrypoint-initdb.d:ro    # 스키마 5개 + ddarahakit 생성
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h127.0.0.1 -uroot -p\"$$MARIADB_ROOT_PASSWORD\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [msa-net]
+
+  kafka:
+    image: bitnami/kafka:3.7                              # KRaft (Zookeeper 불필요)
+    container_name: msa-kafka
+    environment:
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+    ports: ["9092:9092"]
+    volumes: ["msa_kafka_data:/bitnami/kafka"]
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [msa-net]
+
+  kafka-init:                                             # 토픽 1회 생성 후 종료
+    image: bitnami/kafka:3.7
+    depends_on:
+      kafka: { condition: service_healthy }
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        for t in commerce.order.v1 review.review.v1 identity.user.v1; do
+          kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists \
+            --topic "$$t" --partitions 3 --replication-factor 1
+        done
+        echo "topics ready"
+    restart: "no"
+    networks: [msa-net]
+
+  eureka:
+    build:
+      context: .
+      dockerfile: infra/discovery/Dockerfile
+    image: ddarahakit/msa-discovery:dev
+    container_name: msa-eureka
+    ports: ["8761:8761"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [msa-net]
+
+  # ---------- 게이트웨이 ----------
+  gateway:
+    build:
+      context: .
+      dockerfile: infra/gateway/Dockerfile
+    image: ddarahakit/msa-gateway:dev
+    container_name: msa-gateway
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      MONOLITH_URI: "http://monolith:8080"
+      JWT_SECRET: "${JWT_SECRET}"
+      APP_ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-http://localhost,http://localhost:5173}"
+    ports: ["8080:8080"]
+    depends_on:
+      eureka: { condition: service_healthy }
+      monolith: { condition: service_started }
+    networks: [msa-net]
+
+  # ---------- 모놀리스 (0단계 Strangler 대상) ----------
+  monolith:
+    build:
+      context: ./ddarahakit_backend
+      dockerfile: Dockerfile
+    image: ddarahakit/backend:prod
+    container_name: msa-monolith
+    environment:
+      SPRING_PROFILES_ACTIVE: "prod"
+      SERVER_SSL_ENABLED: "false"
+      SERVER_PORT: "8080"
+      SERVER_FORWARD_HEADERS_STRATEGY: "framework"
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+      DB_URL: "jdbc:mariadb://mariadb:3306/ddarahakit?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      JWT_SECRET: "${JWT_SECRET}"
+      AES_SECRET_KEY: "${AES_SECRET_KEY}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET}"
+      GOOGLE_REDIRECT_URI: "${GOOGLE_REDIRECT_URI}"
+      KAKAO_CLIENT_ID: "${KAKAO_CLIENT_ID}"
+      KAKAO_CLIENT_SECRET: "${KAKAO_CLIENT_SECRET}"
+      KAKAO_REDIRECT_URI: "${KAKAO_REDIRECT_URI}"
+      MAIL_ADDR: "${MAIL_ADDR}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD}"
+      PORTONE_SECRET: "${PORTONE_SECRET}"
+      APP_DOMAIN_ALLOWEDORIGINS: "${ALLOWED_ORIGINS:-http://localhost,http://localhost:5173}"
+      UPLOAD_PATH: "/app/uploads"
+    volumes:
+      - msa_uploads:/app/uploads
+    depends_on:
+      mariadb: { condition: service_healthy }
+    networks: [msa-net]
+
+networks:
+  msa-net:
+    driver: bridge
+
+volumes:
+  msa_mariadb_data:
+  msa_kafka_data:
+  msa_uploads:

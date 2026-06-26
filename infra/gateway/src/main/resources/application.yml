@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false   # 명시 라우트(RoutesConfig)만 사용
+
+server:
+  port: 8080
+
+# 0단계: 모든 트래픽을 모놀리스로 (서비스 추출 시 라우트 교체)
+monolith:
+  uri: ${MONOLITH_URI:http://localhost:8081}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+    # 0단계엔 등록할 서비스가 없어도 무방. 서버 부재 시 경고만.
+    register-with-eureka: true
+    fetch-registry: true
+
+jwt:
+  secret:
+    key: ${JWT_SECRET}
+
+app:
+  allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost,http://localhost:81,http://localhost:5173}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway

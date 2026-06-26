@@ -1,0 +1,18 @@
+rootProject.name = 'ddarahakit-msa'
+
+// 공통 라이브러리 (이벤트 계약 · 공통 응답)
+include 'common'
+
+// 인프라
+include 'infra:discovery'
+include 'infra:gateway'
+
+// 비즈니스 서비스 (1단계부터 순차 추가)
+// include 'services:identity-service'
+// include 'services:course-service'
+// include 'services:commerce-service'
+// include 'services:community-service'
+// include 'services:review-service'
+
+// 기존 모놀리스(ddarahakit_backend)는 독립 Gradle 프로젝트로 두고,
+// 0단계에서는 게이트웨이가 정적 라우팅으로 그 앞에 선다(Strangler Fig).

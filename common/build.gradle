@@ -1,0 +1,9 @@
+// 순수 라이브러리(Spring/JPA 의존 없음) — 이벤트 계약·공통 응답만.
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api 'com.fasterxml.jackson.core:jackson-databind'
+    api 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+}

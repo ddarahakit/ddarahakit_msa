@@ -1,0 +1,12 @@
+# 루트 컨텍스트 빌드(gateway/discovery)에서 불필요한 대용량/무관 경로 제외
+.git
+.gradle
+**/build
+**/.gradle
+ddarahakit_frontend
+ddarahakit_backend
+deploy
+docs
+*.md
+dev-uploads
+**/dev-uploads

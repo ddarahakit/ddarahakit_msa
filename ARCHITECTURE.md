@@ -17,6 +17,7 @@
 | [docs/05-common-events.md](docs/05-common-events.md) | 공통 모듈 이벤트 계약 코드(봉투·페이로드 record·직렬화·아웃박스/소비 예시) |
 | [docs/06-docker-compose.md](docs/06-docker-compose.md) | 전체 스택 compose(MariaDB·Kafka KRaft·Eureka·Gateway·5서비스)·스키마 초기화·포트맵 |
 | [docs/07-package-structure.md](docs/07-package-structure.md) | Gradle 멀티모듈·서비스별 패키지 구조·헤더 인증 필터·게이트웨이/디스커버리 |
+| [docs/08-phase0-scaffolding.md](docs/08-phase0-scaffolding.md) | **0단계 구현 완료** — 모노레포·common·Eureka·Gateway·compose, 빌드 검증·실행법 |
 
 ---
 
@@ -191,7 +192,8 @@ ddarahakit_msa/
 ## 9. 진행 현황
 - [x] 분해 전략 설계 (본 문서)
 - [x] 심화 설계 (docs/01~03: 서비스·Kafka·인증)
-- [ ] 0단계: 스캐폴딩 (모노레포 + 인프라 + 모놀리스 게이트웨이 등록)
+- [x] 구현 상세 설계 (docs/04~07: 스키마·이벤트계약·compose·패키지)
+- [x] **0단계: 스캐폴딩** (모노레포 + common + Eureka + Gateway + compose, 모놀리스 정적 라우팅) → [docs/08](docs/08-phase0-scaffolding.md)
 - [ ] 1단계: identity-service
 - [ ] 2단계: community-service
 - [ ] 3단계: commerce-service (`OrderPaid`)
