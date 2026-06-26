@@ -7,6 +7,13 @@
 - **스택**: Java 21, Spring Boot 3.4.2, Spring Cloud 2024.0.x, MariaDB, Kafka
 - **전환 방식**: Strangler Fig (무중단 점진 분리)
 
+### 📚 심화 설계 문서
+| 문서 | 내용 |
+|---|---|
+| [docs/01-services.md](docs/01-services.md) | 서비스별 상세 명세(소유 테이블·마이그레이션 엔드포인트·발행/구독 이벤트·동기 의존·FK 절단) |
+| [docs/02-event-driven-kafka.md](docs/02-event-driven-kafka.md) | Kafka 토픽 설계·트랜잭션 아웃박스·멱등 소비·재시도/DLT·구매 Saga·평점 투영 |
+| [docs/03-auth-gateway.md](docs/03-auth-gateway.md) | 게이트웨이 라우팅·JWT 검증·신원 전파·OAuth2·토큰 회전·마이페이지 BFF |
+
 ---
 
 ## 1. 목표와 핵심 결정 (ADR 요약)
@@ -142,7 +149,8 @@ flowchart TB
 
 ```
 ddarahakit_msa/
-├─ ARCHITECTURE.md           # 본 문서
+├─ ARCHITECTURE.md           # 본 문서(개요·SSOT)
+├─ docs/                     # 심화 설계(서비스·Kafka·인증)
 ├─ settings.gradle           # 멀티모듈
 ├─ infra/
 │   ├─ discovery/            # Eureka 서버
@@ -178,6 +186,7 @@ ddarahakit_msa/
 
 ## 9. 진행 현황
 - [x] 분해 전략 설계 (본 문서)
+- [x] 심화 설계 (docs/01~03: 서비스·Kafka·인증)
 - [ ] 0단계: 스캐폴딩 (모노레포 + 인프라 + 모놀리스 게이트웨이 등록)
 - [ ] 1단계: identity-service
 - [ ] 2단계: community-service
