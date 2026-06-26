@@ -119,6 +119,7 @@ services:
       args:
         VITE_API_BASE_URL: "http://localhost:8080"        # 게이트웨이
         VITE_IMG_BASE_URL: "http://localhost:8080"
+        VITE_MENTORING_WS_URL: "ws://localhost:8080/mentoring/ws/signal"  # 게이트웨이 경유 멘토링 실시간 채널
         VITE_STORAGE_SECRET_KEY: "${VITE_STORAGE_SECRET_KEY:-msaDevStorageKey1234567890}"
         VITE_PORTONE_STORE_ID: "${VITE_PORTONE_STORE_ID:-dev}"
         VITE_PORTONE_CHANNEL_KEY: "${VITE_PORTONE_CHANNEL_KEY:-dev}"

@@ -19,6 +19,11 @@ spring:
     deserialization:
       fail-on-unknown-properties: false
 
+# 멘토링 실시간 WebSocket(/mentoring/ws) 의 브라우저 Origin 허용 목록(쉼표 구분)
+app:
+  ws:
+    allowed-origins: ${WS_ALLOWED_ORIGINS:http://localhost:8081}
+
 server:
   port: 8080
 
