@@ -59,13 +59,6 @@ const formCntrObj = reactive({
     submitBtn: { disabled: true }
 })
 
-//약관동의 팝업 정보 객체
-let BasePupAlertInfo = reactive({
-    toggle: false,
-    text: '',
-    code: null
-})
-
 /**
  * 이메일(아이디) 유효성 룰
  *
@@ -169,8 +162,15 @@ const submitForm = async () => {
         return false
     }
 
-    //API: 회원가입(개인사용자)
+    //API: 로그인
     const data = await api.userLogin(loginInput)
+
+    //응답 객체가 아예 없으면(완전한 네트워크 실패 등) 서비스 불가로 안내
+    if (!data) {
+        loginResError.message = '일시적으로 로그인 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.'
+        loginResError.toggle = true
+        return false
+    }
 
     if (data.success) {
         //로그인
@@ -180,34 +180,30 @@ const submitForm = async () => {
         const redirectPath = route.query.redirect || '/course/list';
 
         router.push({ path: redirectPath });
+        return false
+    }
 
-    } else if (
-        data.code === 20004 ||
-        data.code === 20005
-    ) {
+    // === 실패: 버튼만 누르고 무반응처럼 보이지 않도록 항상 화면에 메시지(loginResError) 노출 ===
+    // 게이트웨이/네트워크 장애(503·연결 실패 등)는 응답 본문에 code 가 없어 status/code 로 판별한다.
+    const isServiceDown =
+        data.status === 503 ||
+        data.code === 503 ||
+        data.code === 'ERR_NETWORK' ||
+        data.code === 'ECONNABORTED' ||
+        data.code === 'ECONNREFUSED'
 
-        //에러 처리
+    if (data.code === 20004 || data.code === 20005) {
+        //이메일 또는 비밀번호 불일치
         loginResError.message = data.message
-        loginResError.toggle = true
-        return false
-    }
-    //제외 코드
-    else if (
-        data.code === '42901' ||
-        data.code === '42902' ||
-        data.code === '42910' ||
-        data.code === '41002' ||
-        data.code === '42911' ||
-        data.code === '42913'
-    ) {
-        return false
+    } else if (isServiceDown) {
+        //서비스 일시 불가 / 네트워크 오류
+        loginResError.message = '일시적으로 로그인 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.'
     } else {
-        //에러 처리
-        BasePupAlertInfo.text = data.errorMessage
-        BasePupAlertInfo.toggle = true
-        return false
+        //그 외 모든 실패도 조용히 넘기지 않고 일반 메시지 노출
+        loginResError.message = data.message || data.errorMessage || '로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
     }
 
+    loginResError.toggle = true
     return false
 }
 
