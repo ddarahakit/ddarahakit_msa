@@ -16,6 +16,15 @@ const route = useRoute()
 // (카테고리 선택 시 courseListByCategory 라우트라 기본 active-class 가 안 잡히는 문제 해결)
 const isCourseActive = computed(() => route.path.startsWith('/course'))
 
+// '멘토링' 활성화: /mentoring 하위 모든 경로에서 활성
+const isMentoringActive = computed(() => route.path.startsWith('/mentoring'))
+
+// '로드맵' 활성화: /roadmap 하위 모든 경로에서 활성
+const isRoadmapActive = computed(() => route.path.startsWith('/roadmap'))
+
+// '포트폴리오' 활성화: /projects 하위 모든 경로에서 활성
+const isProjectActive = computed(() => route.path.startsWith('/projects'))
+
 // '커뮤니티' 활성화: /community 하위 모든 경로에서 활성
 const isCommunityActive = computed(() => route.path.startsWith('/community'))
 
@@ -98,6 +107,12 @@ onMounted(() => {
         <div class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-500">
           <RouterLink :to="{ name: 'courseList' }" class="hover:text-brand transition-colors py-5 border-b-2 border-transparent"
             :class="{ '!text-brand !border-brand': isCourseActive }">실제 수업</RouterLink>
+          <RouterLink :to="{ name: 'mentoring' }" class="hover:text-brand transition-colors py-5 border-b-2 border-transparent"
+            :class="{ '!text-brand !border-brand': isMentoringActive }">멘토링</RouterLink>
+          <RouterLink :to="{ name: 'roadmap' }" class="hover:text-brand transition-colors py-5 border-b-2 border-transparent"
+            :class="{ '!text-brand !border-brand': isRoadmapActive }">로드맵</RouterLink>
+          <RouterLink :to="{ name: 'projectManagement' }" class="hover:text-brand transition-colors py-5 border-b-2 border-transparent"
+            :class="{ '!text-brand !border-brand': isProjectActive }">포트폴리오</RouterLink>
           <RouterLink :to="{ name: 'communityList' }" class="hover:text-brand transition-colors py-5 border-b-2 border-transparent"
             :class="{ '!text-brand !border-brand': isCommunityActive }">커뮤니티</RouterLink>
         </div>
