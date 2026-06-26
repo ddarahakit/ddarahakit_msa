@@ -124,9 +124,28 @@ watch(
 </script>
 
 <template>
-  <div class="h-[calc(100vh-80px)] flex overflow-hidden pt-20">
+  <div class="h-screen flex flex-col overflow-hidden bg-white">
+    <!-- 멘토링 전용 풀폭 헤더 (강의 수강 페이지처럼 좌우 여백 없이 100% 사용) -->
+    <header class="h-16 shrink-0 border-b border-slate-200 bg-white flex items-center justify-between px-4 sm:px-6 z-20">
+      <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+        <button
+          @click="toggleSidebar"
+          :title="sidebarOpen ? '세션 목록 접기' : '세션 목록 열기'"
+          class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-slate-600 shrink-0">
+          <i class="fa-solid fa-bars text-xl"></i>
+        </button>
+        <a href="/" class="font-bold text-lg sm:text-xl shrink-0">따라학<span class="text-brand">IT</span></a>
+        <span class="hidden md:inline text-slate-400 text-sm border-l border-slate-200 pl-3 font-medium">멘토링</span>
+      </div>
+      <RouterLink
+        :to="{ name: 'dashboard' }"
+        class="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-bold rounded-lg transition-colors shrink-0">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">대시보드</span>
+      </RouterLink>
+    </header>
 
-    <main v-if="isHistoryPage" class="flex-1 flex overflow-hidden relative">
+    <main v-if="isHistoryPage" class="flex-1 flex overflow-hidden relative min-h-0">
       <!-- 접을 수 있는 세션 목록 사이드바 -->
       <div class="mentoring-sidebar shrink-0" :class="{ closed: !sidebarOpen }">
         <SessionList
@@ -135,16 +154,6 @@ watch(
           @select="selectHistorySession"
           @toggle="toggleSidebar" />
       </div>
-
-      <!-- 닫혔을 때 다시 여는 탭 -->
-      <button
-        v-show="!sidebarOpen"
-        type="button"
-        @click="toggleSidebar"
-        title="세션 목록 열기"
-        class="absolute left-0 top-1/2 -translate-y-1/2 z-30 w-6 h-16 bg-white border border-l-0 border-slate-200 rounded-r-xl shadow-md flex items-center justify-center text-slate-400 hover:text-brand transition-colors">
-        <i class="fa-solid fa-angles-right text-xs"></i>
-      </button>
 
       <section class="flex-1 flex flex-col bg-slate-50 overflow-hidden min-w-0">
         <SessionDetail

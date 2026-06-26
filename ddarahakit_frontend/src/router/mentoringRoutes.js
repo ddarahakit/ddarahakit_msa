@@ -3,7 +3,7 @@
  */
 const mentoringRoutes = {
     path: '/mentoring',
-    component: () => import('@/layouts/MainLayout.vue'),
+    component: () => import('@/layouts/MentoringLayout.vue'),
     children: [
         {
             name: 'mentoring',
