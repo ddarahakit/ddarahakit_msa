@@ -95,11 +95,29 @@ services:
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
       JWT_SECRET: "${JWT_SECRET}"
-      APP_ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-http://localhost,http://localhost:5173}"
+      GATEWAY_CORS_ENABLED: "true"                                   # MSA 프론트(브라우저) 대상 CORS 일원화
+      APP_ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-http://localhost:8081}"
     ports: ["8080:8080"]
     depends_on:
       eureka: { condition: service_healthy }
       identity-service: { condition: service_started }
+    networks: [msa-net]
+
+  # ---------- MSA 프론트엔드 (브라우저가 게이트웨이를 API 로 호출, 정적 SPA) ----------
+  frontend:
+    build:
+      context: ./ddarahakit_frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "http://localhost:8080"        # 게이트웨이
+        VITE_IMG_BASE_URL: "http://localhost:8080"
+        VITE_STORAGE_SECRET_KEY: "${VITE_STORAGE_SECRET_KEY:-msaDevStorageKey1234567890}"
+        VITE_PORTONE_STORE_ID: "${VITE_PORTONE_STORE_ID:-dev}"
+        VITE_PORTONE_CHANNEL_KEY: "${VITE_PORTONE_CHANNEL_KEY:-dev}"
+    image: ddarahakit/msa-frontend:dev
+    container_name: msa-frontend
+    ports: ["8081:80"]
+    depends_on: [gateway]
     networks: [msa-net]
 
   # ---------- identity-service (1단계 추출) ----------

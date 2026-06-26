@@ -6,13 +6,18 @@ spring:
       discovery:
         locator:
           enabled: false   # 명시 라우트(RoutesConfig)만 사용
+      # 게이트웨이가 CORS 를 일원화. 다운스트림(identity 등)이 동일 헤더를 추가해도
+      # 중복 ACAO 로 브라우저가 거부하지 않도록 응답 헤더를 dedupe.
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+
+# 게이트웨이 CORS 토글(서비스 추출 후 활성). 0단계엔 모놀리스가 CORS 처리하므로 off.
+gateway:
+  cors:
+    enabled: ${GATEWAY_CORS_ENABLED:false}
 
 server:
   port: 8080
-
-# 0단계: 모든 트래픽을 모놀리스로 (서비스 추출 시 라우트 교체)
-monolith:
-  uri: ${MONOLITH_URI:http://localhost:8081}
 
 eureka:
   client:
