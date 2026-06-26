@@ -105,7 +105,7 @@ services:
     build:
       context: ./ddarahakit_backend
       dockerfile: Dockerfile
-    image: ddarahakit/backend:prod
+    image: ddarahakit/backend:msa          # 운영 :prod 태그를 덮어쓰지 않도록 별도 태그
     container_name: msa-monolith
     environment:
       SPRING_PROFILES_ACTIVE: "prod"
