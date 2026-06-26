@@ -44,6 +44,9 @@ public class RoutesConfig {
                                 "/user/ordered", "/user/study/**")
                         .uri("lb://course-service"))
 
+                // ── 신규: mentoring-service (멘토링) ──
+                .route("mentoring", r -> r.path("/mentoring/**").uri("lb://mentoring-service"))
+
                 // 모놀리스 은퇴 완료 — 캐치올 제거. 미라우팅 경로는 404.
                 .build();
     }

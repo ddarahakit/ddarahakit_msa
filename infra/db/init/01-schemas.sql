@@ -6,6 +6,7 @@ CREATE DATABASE IF NOT EXISTS course_db    CHARACTER SET utf8mb4 COLLATE utf8mb4
 CREATE DATABASE IF NOT EXISTS commerce_db  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS community_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS review_db    CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS mentoring_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- compose 의 MARIADB_USER 에 전 스키마 권한 부여
 GRANT ALL PRIVILEGES ON ddarahakit.*   TO 'ddarahakit'@'%';
@@ -14,4 +15,5 @@ GRANT ALL PRIVILEGES ON course_db.*    TO 'ddarahakit'@'%';
 GRANT ALL PRIVILEGES ON commerce_db.*  TO 'ddarahakit'@'%';
 GRANT ALL PRIVILEGES ON community_db.* TO 'ddarahakit'@'%';
 GRANT ALL PRIVILEGES ON review_db.*    TO 'ddarahakit'@'%';
+GRANT ALL PRIVILEGES ON mentoring_db.* TO 'ddarahakit'@'%';
 FLUSH PRIVILEGES;

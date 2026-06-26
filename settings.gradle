@@ -13,6 +13,7 @@ include 'services:course-service'
 include 'services:commerce-service'
 include 'services:community-service'
 include 'services:review-service'
+include 'services:mentoring-service'
 
 // 기존 모놀리스(ddarahakit_backend)는 독립 Gradle 프로젝트로 두고,
 // 0단계에서는 게이트웨이가 정적 라우팅으로 그 앞에 선다(Strangler Fig).

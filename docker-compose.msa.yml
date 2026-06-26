@@ -244,6 +244,24 @@ services:
       kafka: { condition: service_healthy }
     networks: [msa-net]
 
+  # ---------- mentoring-service (신규 기능: 1:1 멘토링) ----------
+  mentoring-service:
+    build:
+      context: .
+      dockerfile: services/mentoring-service/Dockerfile
+    image: ddarahakit/msa-mentoring:dev
+    container_name: msa-mentoring
+    environment:
+      DB_URL: "jdbc:mariadb://mariadb:3306/mentoring_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
+    depends_on:
+      mariadb: { condition: service_healthy }
+      eureka: { condition: service_healthy }
+    networks: [msa-net]
+
   # (모놀리스 은퇴 완료 — 전 도메인이 5개 서비스로 추출되어 monolith 서비스 제거)
 
 networks:
