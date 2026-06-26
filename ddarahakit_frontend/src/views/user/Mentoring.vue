@@ -21,7 +21,8 @@ const selectedSessionId = computed(() => route.params.sessionId)
 const selectedScheduleId = computed(() => route.params.sessionId)
 
 const getSessionId = (session) => {
-  return session.id
+  return session.sessionIdx
+    || session.id
     || session.sessionId
     || session.session_id
     || session.idx

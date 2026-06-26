@@ -16,7 +16,8 @@ const emits = defineEmits(['select'])
 const keyword = ref('')
 
 const getSessionId = (session) => {
-    return session.id
+    return session.sessionIdx
+        || session.id
         || session.sessionId
         || session.session_id
         || session.idx

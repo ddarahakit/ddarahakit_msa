@@ -117,34 +117,46 @@ const joinSession = () => {
   })
 }
 
+// 발신자 이름 정규화: 백엔드는 sender 를 {idx,name,profileImageUrl} 객체로 준다.
+const resolveSenderName = (item) => {
+  if (typeof item.from === 'string') return item.from
+  if (item.sender && typeof item.sender === 'object') return item.sender.name || ''
+  if (typeof item.sender === 'string') return item.sender
+  return item.senderName || item.userName || ''
+}
+
+const mapMessage = (item) => ({
+  from: resolveSenderName(item),
+  message: item.message || item.text || '',
+  time: item.time || item.createdAt || ''
+})
+
 const loadSessionDetail = async () => {
   const res = await api.detail(props.sessionId)
   const result = res?.results || res?.result || {}
 
+  // 과거 호환: 배열로 바로 오는 경우
   if (Array.isArray(result)) {
-    messages.value = result.map((item) => ({
-      from: item.from || item.sender || item.userName || '',
-      message: item.message || item.text || '',
-      time: item.time || item.createdAt || ''
-    }))
+    messages.value = result.map(mapMessage)
     return
   }
 
-  const messageList = Array.isArray(result.messages)
-    ? result.messages
-    : Array.isArray(result.list)
-      ? result.list
-      : []
+  // 현재 백엔드 구조: { session: {...}, messages: { list: [...] } }
+  const session = result.session || result
+  const rawList = Array.isArray(result.messages?.list)
+    ? result.messages.list
+    : Array.isArray(result.messages)
+      ? result.messages
+      : Array.isArray(result.list)
+        ? result.list
+        : []
 
-  messages.value = messageList.map((item) => ({
-    from: item.from || item.sender || item.userName || '',
-    message: item.message || item.text || '',
-    time: item.time || item.createdAt || ''
-  }))
+  // 목록은 최신순(DESC)으로 오므로, 채팅은 오래된→최신 순서가 되도록 뒤집는다.
+  messages.value = rawList.map(mapMessage).reverse()
 
   sessionMeta.value = {
-    title: result.subject || result.title || '세션 제목',
-    date: result.scheduledAt || result.sessionDate || result.date || '날짜 정보'
+    title: session.subject || session.title || '세션 제목',
+    date: session.scheduledAt || session.sessionDate || session.date || '날짜 정보'
   }
 }
 
