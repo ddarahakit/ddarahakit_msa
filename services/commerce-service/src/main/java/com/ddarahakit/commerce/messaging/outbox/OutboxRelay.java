@@ -25,7 +25,16 @@ public class OutboxRelay {
         for (OutboxEntity o : repo.findTop100ByPublishedAtIsNullOrderById()) {
             EventEnvelope env = EventEnvelope.of(o.getEventId(), o.getEventType(), 1,
                     o.getCreatedAt(), null, parseJson(o.getPayload()));
-            kafka.send(o.getTopic(), o.getAggregateId(), EventSerde.toJson(env));
+            String json = EventSerde.toJson(env);
+            if (o.getTraceparent() != null) {
+                var rec = new org.apache.kafka.clients.producer.ProducerRecord<String, String>(
+                        o.getTopic(), o.getAggregateId(), json);
+                rec.headers().add("traceparent",
+                        o.getTraceparent().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                kafka.send(rec);
+            } else {
+                kafka.send(o.getTopic(), o.getAggregateId(), json);
+            }
             o.setPublishedAt(java.time.Instant.now());
         }
     }

@@ -201,3 +201,4 @@ ddarahakit_msa/
 - [x] **5단계: course-service 코어 + 이벤트 소비자** (course_db, **OrderPaid→enrollment·Review*→rating 투영 소비자**, 수강권/평점 E2E 검증) → [docs/13](docs/13-phase5-course.md)
 - [x] **마이페이지 집계 이전 → 모놀리스 은퇴** (집계 6종을 소유 서비스로 라우팅, 모놀리스 트래픽 0) → [docs/14](docs/14-monolith-retirement.md)
 - [x] **MSA 프론트엔드 + 게이트웨이 CORS** (Vue SPA 를 게이트웨이 대상으로 빌드·8081 서빙, CORS 일원화+dedupe) → [docs/15](docs/15-frontend-cors.md)
+- [x] **분산 추적(Zipkin) + Kafka 추적** (Micrometer/feign-micrometer 동기 전파 + 아웃박스 traceparent 비동기 전파, 의존 그래프) → [docs/16](docs/16-distributed-tracing.md)

@@ -85,6 +85,13 @@ services:
       retries: 20
     networks: [msa-net]
 
+  # ---------- Zipkin (분산 추적 수집·UI) ----------
+  zipkin:
+    image: openzipkin/zipkin:3
+    container_name: msa-zipkin
+    ports: ["9411:9411"]
+    networks: [msa-net]
+
   # ---------- 게이트웨이 ----------
   gateway:
     build:
@@ -94,6 +101,7 @@ services:
     container_name: msa-gateway
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
       JWT_SECRET: "${JWT_SECRET}"
       GATEWAY_CORS_ENABLED: "true"                                   # MSA 프론트(브라우저) 대상 CORS 일원화
       APP_ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-http://localhost:8081}"
@@ -143,6 +151,7 @@ services:
       KAKAO_CLIENT_SECRET: "${KAKAO_CLIENT_SECRET}"
       KAKAO_REDIRECT_URI: "${KAKAO_REDIRECT_URI}"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
       UPLOAD_PATH: "/app/uploads"
     volumes:
       - msa_uploads:/app/uploads
@@ -163,6 +172,7 @@ services:
       DB_USER: "${DB_USER}"
       DB_PASSWORD: "${DB_PASSWORD}"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
       UPLOAD_PATH: "/app/uploads"
     volumes:
       - msa_uploads:/app/uploads
@@ -183,6 +193,7 @@ services:
       DB_USER: "${DB_USER}"
       DB_PASSWORD: "${DB_PASSWORD}"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       MONOLITH_URL: "http://course-service:8080"   # 모놀리스 은퇴: course-service 가 /course 제공
       PORTONE_SECRET: "${PORTONE_SECRET}"
@@ -204,6 +215,7 @@ services:
       DB_USER: "${DB_USER}"
       DB_PASSWORD: "${DB_PASSWORD}"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       MONOLITH_URL: "http://course-service:8080"   # 모놀리스 은퇴: course-service 가 /course 제공
     depends_on:
@@ -224,6 +236,7 @@ services:
       DB_USER: "${DB_USER}"
       DB_PASSWORD: "${DB_PASSWORD}"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
     depends_on:
       mariadb: { condition: service_healthy }

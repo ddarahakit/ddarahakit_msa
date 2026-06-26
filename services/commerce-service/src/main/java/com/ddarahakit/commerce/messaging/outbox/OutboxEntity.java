@@ -28,6 +28,9 @@ public class OutboxEntity {
     @Column(columnDefinition = "JSON")
     String payload;
 
+    @Column(nullable = true)
+    String traceparent;
+
     java.time.Instant createdAt;
     java.time.Instant publishedAt;
 }

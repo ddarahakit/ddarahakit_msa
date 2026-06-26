@@ -20,6 +20,8 @@ spring:
       fail-on-unknown-properties: false
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    listener:
+      observation-enabled: true
     consumer:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -44,3 +46,11 @@ management:
   endpoint:
     health:
       show-details: always
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      type: w3c
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}

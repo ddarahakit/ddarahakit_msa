@@ -32,4 +32,14 @@ subprojects {
     tasks.named('test') {
         useJUnitPlatform()
     }
+
+    // 분산 추적 (Micrometer Tracing → Zipkin) — common 모듈 제외
+    if (project.name != 'common') {
+        dependencies {
+            implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+            implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
+            // Feign 클라이언트 호출을 관측(client 스팬 + traceparent 전파)해 서비스 간 trace 연결
+            implementation 'io.github.openfeign:feign-micrometer'
+        }
+    }
 }
