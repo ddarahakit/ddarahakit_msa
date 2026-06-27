@@ -1,6 +1,7 @@
 package com.ddarahakit.community.domain.community.model;
 
 import com.ddarahakit.community.common.model.BaseEntity;
+import com.ddarahakit.community.utils.HtmlSanitizer;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
@@ -41,7 +42,7 @@ public class Comment extends BaseEntity {
 
     public void update(String text, String content) {
         this.text = text;
-        this.content = content;
+        this.content = HtmlSanitizer.clean(content);
     }
 
     public void setAccepted(boolean accepted) {

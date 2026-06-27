@@ -1,5 +1,6 @@
 package com.ddarahakit.community.domain.community.model;
 
+import com.ddarahakit.community.utils.HtmlSanitizer;
 import com.ddarahakit.community.utils.TagUtils;
 import com.ddarahakit.community.utils.TimeAgoUtil;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -64,7 +65,7 @@ public class CommunityDto {
                     .postType(this.postType)
                     .title(this.title)
                     .text(this.text)
-                    .content(this.content)
+                    .content(HtmlSanitizer.clean(this.content))
                     .userIdx(userIdx)
                     .authorName(authorName)
                     .authorProfileImageUrl(authorProfileImageUrl)
@@ -139,7 +140,7 @@ public class CommunityDto {
         public Comment toEntity(Long userIdx, String authorName, String authorProfileImageUrl, Post post) {
             return Comment.builder()
                     .text(this.text)
-                    .content(this.content)
+                    .content(HtmlSanitizer.clean(this.content))
                     .userIdx(userIdx)
                     .authorName(authorName)
                     .authorProfileImageUrl(authorProfileImageUrl)

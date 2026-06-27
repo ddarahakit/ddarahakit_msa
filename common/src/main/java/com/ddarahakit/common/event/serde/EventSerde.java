@@ -1,6 +1,7 @@
 package com.ddarahakit.common.event.serde;
 
 import com.ddarahakit.common.event.EventEnvelope;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -13,6 +14,8 @@ public final class EventSerde {
     private static final ObjectMapper M = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            // 하위호환(필드 추가만): 프로듀서가 새 필드를 추가해도 구버전 컨슈머가 깨지지 않게 미지 필드 무시
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build();
 
     private EventSerde() {

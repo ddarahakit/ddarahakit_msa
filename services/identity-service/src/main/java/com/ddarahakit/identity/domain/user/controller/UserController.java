@@ -306,6 +306,9 @@ public class UserController {
             @Valid @RequestBody UserDto.ResetPasswordReq dto
     ) {
         UserDto.SignupRes response = userService.resetPassword(dto);
+        // 비밀번호 재설정 후 해당 사용자의 모든 세션(리프레시 토큰)을 무효화한다.
+        // (계정 탈취 의심 상황에서 쓰이는 흐름이므로, 공격자의 기존 세션이 살아있지 않게 한다)
+        tokenService.logoutAll(response.getIdx());
         return ResponseEntity.ok().body(BaseResponse.success(response));
     }
 

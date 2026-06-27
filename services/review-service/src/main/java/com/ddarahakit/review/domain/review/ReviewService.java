@@ -79,6 +79,13 @@ public class ReviewService {
         requireCourse(courseIdx);
 
         Long userIdx = authUserDetails.getIdx();
+
+        // 구매(수강권) 보유자만 리뷰 작성 가능 — 안 산 강의 리뷰로 course 평점 projection 이 오염되지 않게 검증.
+        // 검증 실패(course-service 장애 등)는 예외 전파 → 미검증 리뷰를 허용하지 않는다(fail-closed).
+        if (!courseNameClient.enrollmentExists(userIdx, courseIdx)) {
+            throw BaseException.of(REVIEW_NOT_PURCHASED);
+        }
+
         String authorName = resolveAuthorName(userIdx);
 
         Review review = reviewRepository.save(dto.toEntity(userIdx, courseIdx, authorName));

@@ -32,7 +32,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return path.startsWith("/user/login") ||
                 path.startsWith("/user/signup") ||
                 path.startsWith("/user/token/refresh") ||
-                path.startsWith("/user/logout") ||
+                // 정확히 '/user/logout' 만 스킵. '/user/logout/all' 은 인증 필요(authenticated)이므로
+                // 필터를 거쳐 인증 컨텍스트가 설정돼야 한다(startsWith 면 logout/all 까지 스킵돼 항상 401).
+                path.equals("/user/logout") ||
                 path.startsWith("/oauth2/authorization/");
     }
 

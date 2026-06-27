@@ -225,14 +225,26 @@ public class CourseService {
 
     @Transactional
     public LectureDto.LectureCompleteRes lectureComplete(AuthUserDetails authUserDetails, LectureDto.LectureCompleteReq dto) {
+        Long userIdx = authUserDetails.getIdx();
+
+        // 1) 수강권(enrollment) 보유자만 진도 기록 가능 — 구매하지 않은 코스의 진도/통계 오염(IDOR) 방지
+        if (!enrollmentRepository.existsByUserIdxAndCourseIdx(userIdx, dto.getCourseIdx())) {
+            throw BaseException.of(ORDERS_NOT_ORDERED);
+        }
+
+        // 2) 요청한 강의가 실제로 그 코스에 속하는지 검증 — 임의 lectureIdx/courseIdx 조합 차단
+        if (!lectureRepository.existsByIdxAndSection_Course_Idx(dto.getLectureIdx(), dto.getCourseIdx())) {
+            throw BaseException.of(LECTURE_NOT_IN_COURSE);
+        }
+
         Optional<LectureComplete> result = lectureCompleteRepository
-                .findByUserIdxAndCourseIdxAndLectureIdx(authUserDetails.getIdx(), dto.getCourseIdx(), dto.getLectureIdx());
+                .findByUserIdxAndCourseIdxAndLectureIdx(userIdx, dto.getCourseIdx(), dto.getLectureIdx());
 
         if (result.isPresent()) {
             throw BaseException.of(ALREADY_LECTURE_COMPLETE);
         }
 
-        LectureComplete lectureComplete = lectureCompleteRepository.save(dto.toEntity(authUserDetails.getIdx()));
+        LectureComplete lectureComplete = lectureCompleteRepository.save(dto.toEntity(userIdx));
 
         return LectureDto.LectureCompleteRes.of(lectureComplete.getLecture());
     }

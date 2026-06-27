@@ -1,6 +1,7 @@
 package com.ddarahakit.community.domain.community.model;
 
 import com.ddarahakit.community.common.model.BaseEntity;
+import com.ddarahakit.community.utils.HtmlSanitizer;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -82,7 +83,7 @@ public class Post extends BaseEntity {
         this.postType = postType;
         this.title = title;
         this.text = text;
-        this.content = content;
+        this.content = HtmlSanitizer.clean(content);
         this.courseIdx = courseIdx;
         this.lectureIdx = lectureIdx;
         // course/lecture 명 스냅샷은 추후 이벤트 투영으로 갱신한다. (TODO)

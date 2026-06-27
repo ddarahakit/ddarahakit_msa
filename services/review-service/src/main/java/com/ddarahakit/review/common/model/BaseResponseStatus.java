@@ -22,6 +22,7 @@ public enum BaseResponseStatus {
      */
     COURSE_NOT_FOUND(false, 40060, "코스를 찾을 수 없습니다."),
     REVIEW_NOT_FOUND(false, 40080, "리뷰를 찾을 수 없습니다."),
+    REVIEW_NOT_PURCHASED(false, 40081, "구매한 강의에만 리뷰를 작성할 수 있습니다."),
 
     /**
      * 50000 : Database 오류

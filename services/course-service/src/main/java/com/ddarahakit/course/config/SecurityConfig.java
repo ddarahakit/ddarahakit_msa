@@ -37,16 +37,21 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/error").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
 
+                        // 서비스 간 내부 호출(게이트웨이 미노출, 내부망 전용). 외부 비노출이라 permitAll.
+                        .requestMatchers("/internal/**").permitAll()
+
                         // === 인증 필요(수강완료 기록 / 강의 생성 / 로드맵 변경) — 공개 GET 보다 먼저 선언 ===
                         // 마이페이지(내 강의실/주간 학습) — 인증 필요
                         .requestMatchers(GET, "/user/ordered").authenticated()
                         .requestMatchers(GET, "/user/study/weekly").authenticated()
 
                         .requestMatchers(POST, "/course/lecture/complete").authenticated()
-                        .requestMatchers(POST, "/lecture/create").authenticated()
-                        .requestMatchers(POST, "/roadmap/**").authenticated()
-                        .requestMatchers(PUT, "/roadmap/**").authenticated()
-                        .requestMatchers(DELETE, "/roadmap/**").authenticated()
+
+                        // 강의 생성 / 로드맵 변경은 관리자 전용 (일반 사용자 권한상승 차단)
+                        .requestMatchers(POST, "/lecture/create").hasRole("ADMIN")
+                        .requestMatchers(POST, "/roadmap/**").hasRole("ADMIN")
+                        .requestMatchers(PUT, "/roadmap/**").hasRole("ADMIN")
+                        .requestMatchers(DELETE, "/roadmap/**").hasRole("ADMIN")
 
                         // === 공개(비로그인 허용) 조회 엔드포인트 ===
                         .requestMatchers(GET, "/course/**").permitAll()
