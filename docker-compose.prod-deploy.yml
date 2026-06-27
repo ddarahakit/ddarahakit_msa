@@ -1,0 +1,98 @@
+# ============================================================================
+#  운영(모놀리스) 배포 스택 — GHCR private 이미지를 pull 해서 다른 서버에서 운영.
+#  (docker-compose.yml 의 배포본: build 대신 ghcr.io 이미지를 사용)
+#
+#  대상 서버 준비물:
+#    - 이 파일 + .env (.env.example 참고) + deploy/ (nginx/default.conf, certs/fullchain.pem·privkey.pem)
+#    - 강의 영상 디렉터리(.env 의 VIDEO_DIR)
+#  실행:
+#    docker login ghcr.io                          # read:packages PAT
+#    docker compose -f docker-compose.prod-deploy.yml pull
+#    docker compose -f docker-compose.prod-deploy.yml up -d
+#
+#  ※ 프론트(nginx)가 TLS 엣지 → deploy/certs 의 인증서가 새 서버 도메인과 일치해야 함.
+#  ※ 프론트 이미지엔 빌드타임 VITE_API_BASE_URL(기본 https://api.ddarahakit.com)이 박힘 →
+#    같은 도메인을 새 서버로 돌리면 그대로, 도메인이 다르면 ghcr-push-prod.ps1 -Build 로 재빌드 후 push.
+# ============================================================================
+name: ddarahakit
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: ddarahakit-mariadb
+    ports:
+      - "127.0.0.1:3306:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+      MARIADB_DATABASE: "ddarahakit"
+      MARIADB_USER: "${DB_USER}"
+      MARIADB_PASSWORD: "${DB_PASSWORD}"
+      TZ: Asia/Seoul
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p\"$$MARIADB_ROOT_PASSWORD\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [ddarahakit-net]
+
+  backend:
+    image: ghcr.io/${GHCR_OWNER:-ddarahakit}/backend:${IMAGE_TAG:-prod}
+    container_name: ddarahakit-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: "prod"
+      SERVER_SSL_ENABLED: "false"
+      SERVER_PORT: "8080"
+      SERVER_FORWARD_HEADERS_STRATEGY: "framework"
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+      DB_URL: "jdbc:mariadb://mariadb:3306/ddarahakit?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      JWT_SECRET: "${JWT_SECRET}"
+      AES_SECRET_KEY: "${AES_SECRET_KEY}"
+      SSL_KEY_STORE_PASSWORD: "${SSL_KEY_STORE_PASSWORD}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET}"
+      GOOGLE_REDIRECT_URI: "${GOOGLE_REDIRECT_URI}"
+      KAKAO_CLIENT_ID: "${KAKAO_CLIENT_ID}"
+      KAKAO_CLIENT_SECRET: "${KAKAO_CLIENT_SECRET}"
+      KAKAO_REDIRECT_URI: "${KAKAO_REDIRECT_URI}"
+      MAIL_ADDR: "${MAIL_ADDR}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD}"
+      PORTONE_SECRET: "${PORTONE_SECRET}"
+      UPLOAD_PATH: "/app/uploads"
+    volumes:
+      - uploads:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8080' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      mariadb: { condition: service_healthy }
+    networks: [ddarahakit-net]
+
+  frontend:
+    image: ghcr.io/${GHCR_OWNER:-ddarahakit}/frontend:${IMAGE_TAG:-prod}
+    container_name: ddarahakit-frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/certs:/etc/nginx/certs:ro
+      - ./deploy/nginx/logs:/var/log/nginx
+      - "${VIDEO_DIR}:/srv/videos:ro"
+    depends_on:
+      - backend
+    networks: [ddarahakit-net]
+
+networks:
+  ddarahakit-net:
+    driver: bridge
+
+volumes:
+  mariadb_data:
+  uploads:
