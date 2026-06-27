@@ -70,13 +70,17 @@ app:
     server: ${APP_DOMAIN_SERVER:http://localhost}
     cookie: ${APP_DOMAIN_COOKIE:localhost}
   aes:
-    key: ${AES_SECRET_KEY:devAesSecretKey1234567890123456}  # 32자 (AES-256), 운영 환경에서 반드시 환경 변수로 교체
+    # 기본값 없음(fail-fast): 미설정 시 기동 실패. 운영/배포 시 AES_SECRET_KEY(32자) 반드시 주입.
+    key: ${AES_SECRET_KEY}
   token:
     access-max-age: 1800000  # 30분 (밀리초)
     refresh-max-age: 604800000  # 7일 (밀리초)
-    # 로컬은 http://localhost 이므로 Secure 제거, SameSite=Lax
-    access-format: "ATOKEN=%s; HttpOnly; SameSite=Lax; Domain=localhost; Path=/; Max-Age=%d"
-    refresh-format: "RTOKEN=%s; HttpOnly; SameSite=Lax; Domain=localhost; Path=/; Max-Age=%d"
+    # 쿠키 속성은 배포 환경마다 다르므로 env 로 외부화(기본값은 로컬 http://localhost 용).
+    #  - 다른 서버(IP/도메인) 배포 시 APP_TOKEN_ACCESS_FORMAT/REFRESH_FORMAT 으로 Domain·Secure 를 맞춰 주입.
+    #  - HTTPS 도메인 예: "ATOKEN=%s; HttpOnly; Secure; SameSite=Lax; Domain=example.com; Path=/; Max-Age=%d"
+    #  - IP 접속 예(도메인 생략 = host-only): "ATOKEN=%s; HttpOnly; SameSite=Lax; Path=/; Max-Age=%d"
+    access-format: "${APP_TOKEN_ACCESS_FORMAT:ATOKEN=%s; HttpOnly; SameSite=Lax; Domain=localhost; Path=/; Max-Age=%d}"
+    refresh-format: "${APP_TOKEN_REFRESH_FORMAT:RTOKEN=%s; HttpOnly; SameSite=Lax; Domain=localhost; Path=/; Max-Age=%d}"
 
 project:
   upload:

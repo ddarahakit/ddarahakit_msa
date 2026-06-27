@@ -1,0 +1,245 @@
+# ============================================================================
+#  MSA 배포 스택 (다른 서버 운영용) — GHCR private 이미지를 pull 해서 실행.
+#
+#  대상 서버에서:
+#    1) docker login ghcr.io                       (read:packages PAT)
+#    2) .env 작성 (.env.deploy.example 참고 — 모든 비밀/URL 주입)
+#    3) docker compose -f docker-compose.deploy.yml pull
+#    4) docker compose -f docker-compose.deploy.yml up -d
+#
+#  ※ 이미지는 dev 머신에서 빌드·push 한다(scripts/ghcr-push.ps1).
+#  ※ 프론트(VITE_*)는 빌드타임에 URL 이 박히므로, 대상 서버 공개주소로 빌드한 이미지를 push 해야 한다.
+#  ※ 외부 노출은 gateway(8080)·frontend(8081)만. DB/Kafka/Eureka/Zipkin 은 내부망 전용.
+# ============================================================================
+name: ddarahakit-msa
+
+services:
+  # ---------- 인프라 (공식 이미지) ----------
+  mariadb:
+    image: mariadb:11.4
+    container_name: msa-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+      MARIADB_USER: "${DB_USER}"
+      MARIADB_PASSWORD: "${DB_PASSWORD}"
+      TZ: Asia/Seoul
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    # DB 포트는 외부 비노출(내부망 전용). 관리 접속이 필요하면 아래 주석 해제.
+    # ports: ["3306:3306"]
+    volumes:
+      - msa_mariadb_data:/var/lib/mysql
+      - ./infra/db/init:/docker-entrypoint-initdb.d:ro   # 최초 1회 스키마 7개 생성
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h127.0.0.1 -uroot -p\"$$MARIADB_ROOT_PASSWORD\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [msa-net]
+
+  kafka:
+    image: apache/kafka:3.8.1
+    container_name: msa-kafka
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [msa-net]
+
+  kafka-init:
+    image: apache/kafka:3.8.1
+    depends_on:
+      kafka: { condition: service_healthy }
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        for t in commerce.order.v1 review.review.v1 identity.user.v1; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists \
+            --topic "$$t" --partitions 3 --replication-factor 1
+        done
+        echo "topics ready"
+    restart: "no"
+    networks: [msa-net]
+
+  zipkin:
+    image: openzipkin/zipkin:3
+    container_name: msa-zipkin
+    networks: [msa-net]
+
+  # ---------- 디스커버리 / 게이트웨이 ----------
+  eureka:
+    image: ghcr.io/${GHCR_OWNER:-ddarahakit}/msa-discovery:${IMAGE_TAG:-latest}
+    container_name: msa-eureka
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [msa-net]
+
+  gateway:
+    image: ghcr.io/${GHCR_OWNER:-ddarahakit}/msa-gateway:${IMAGE_TAG:-latest}
+    container_name: msa-gateway
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
+      JWT_SECRET: "${JWT_SECRET}"
+      GATEWAY_CORS_ENABLED: "true"
+      # 브라우저(프론트) 공개 출처. 예: http://1.2.3.4:8081 또는 https://app.example.com
+      APP_ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
+    ports: ["8080:8080"]
+    depends_on:
+      eureka: { condition: service_healthy }
+      identity-service: { condition: service_started }
+    networks: [msa-net]
+
+  # ---------- 프론트엔드 (빌드타임에 공개 API URL 이 박힌 이미지) ----------
+  frontend:
+    image: ghcr.io/${GHCR_OWNER:-ddarahakit}/msa-frontend:${IMAGE_TAG:-latest}
+    container_name: msa-frontend
+    ports: ["8081:80"]
+    depends_on: [gateway]
+    networks: [msa-net]
+
+  # ---------- identity-service ----------
+  identity-service:
+    image: ghcr.io/${GHCR_OWNER:-ddarahakit}/msa-identity:${IMAGE_TAG:-latest}
+    container_name: msa-identity
+    environment:
+      SPRING_PROFILES_ACTIVE: "default"
+      DB_URL: "jdbc:mariadb://mariadb:3306/identity_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      JWT_SECRET: "${JWT_SECRET}"
+      AES_SECRET_KEY: "${AES_SECRET_KEY}"
+      # 배포 환경 도메인/쿠키 (다른 서버에선 반드시 주입) — 미주입 시 localhost 기본값이라 쿠키가 거부됨
+      APP_DOMAIN_SERVER: "${APP_DOMAIN_SERVER}"
+      APP_DOMAIN_COOKIE: "${APP_DOMAIN_COOKIE}"
+      APP_TOKEN_ACCESS_FORMAT: "${APP_TOKEN_ACCESS_FORMAT}"
+      APP_TOKEN_REFRESH_FORMAT: "${APP_TOKEN_REFRESH_FORMAT}"
+      MAIL_ADDR: "${MAIL_ADDR}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET}"
+      GOOGLE_REDIRECT_URI: "${GOOGLE_REDIRECT_URI}"
+      KAKAO_CLIENT_ID: "${KAKAO_CLIENT_ID}"
+      KAKAO_CLIENT_SECRET: "${KAKAO_CLIENT_SECRET}"
+      KAKAO_REDIRECT_URI: "${KAKAO_REDIRECT_URI}"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
+      UPLOAD_PATH: "/app/uploads"
+    volumes:
+      - msa_uploads:/app/uploads
+    depends_on:
+      mariadb: { condition: service_healthy }
+      eureka: { condition: service_healthy }
+    networks: [msa-net]
+
+  # ---------- community-service ----------
+  community-service:
+    image: ghcr.io/${GHCR_OWNER:-ddarahakit}/msa-community:${IMAGE_TAG:-latest}
+    container_name: msa-community
+    environment:
+      DB_URL: "jdbc:mariadb://mariadb:3306/community_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
+      UPLOAD_PATH: "/app/uploads"
+    volumes:
+      - msa_uploads:/app/uploads
+    depends_on:
+      mariadb: { condition: service_healthy }
+      eureka: { condition: service_healthy }
+    networks: [msa-net]
+
+  # ---------- commerce-service ----------
+  commerce-service:
+    image: ghcr.io/${GHCR_OWNER:-ddarahakit}/msa-commerce:${IMAGE_TAG:-latest}
+    container_name: msa-commerce
+    environment:
+      DB_URL: "jdbc:mariadb://mariadb:3306/commerce_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      MONOLITH_URL: "http://course-service:8080"
+      PORTONE_SECRET: "${PORTONE_SECRET}"
+    depends_on:
+      mariadb: { condition: service_healthy }
+      eureka: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+    networks: [msa-net]
+
+  # ---------- review-service ----------
+  review-service:
+    image: ghcr.io/${GHCR_OWNER:-ddarahakit}/msa-review:${IMAGE_TAG:-latest}
+    container_name: msa-review
+    environment:
+      DB_URL: "jdbc:mariadb://mariadb:3306/review_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      MONOLITH_URL: "http://course-service:8080"
+    depends_on:
+      mariadb: { condition: service_healthy }
+      eureka: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+    networks: [msa-net]
+
+  # ---------- course-service ----------
+  course-service:
+    image: ghcr.io/${GHCR_OWNER:-ddarahakit}/msa-course:${IMAGE_TAG:-latest}
+    container_name: msa-course
+    environment:
+      DB_URL: "jdbc:mariadb://mariadb:3306/course_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+    depends_on:
+      mariadb: { condition: service_healthy }
+      eureka: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+    networks: [msa-net]
+
+  # ---------- mentoring-service ----------
+  mentoring-service:
+    image: ghcr.io/${GHCR_OWNER:-ddarahakit}/msa-mentoring:${IMAGE_TAG:-latest}
+    container_name: msa-mentoring
+    environment:
+      DB_URL: "jdbc:mariadb://mariadb:3306/mentoring_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+      ZIPKIN_ENDPOINT: "http://zipkin:9411/api/v2/spans"
+    depends_on:
+      mariadb: { condition: service_healthy }
+      eureka: { condition: service_healthy }
+    networks: [msa-net]
+
+networks:
+  msa-net:
+    driver: bridge
+
+volumes:
+  msa_mariadb_data:
+  msa_uploads:
